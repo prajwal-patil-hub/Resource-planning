@@ -157,8 +157,9 @@ most expensive category of mistake in software, and the cheapest to avoid.
 
 ## Round 2 — Work, People & Authority
 
-**Status:** OPEN — awaiting answers
+**Status:** ANSWERED — see outcomes below
 **Date asked:** 2026-08-14
+**Date answered:** 2026-08-14
 **Deck:** `round-02-cards.html`
 
 Purpose: re-ask what Round 1 left open (scale, system of record) in plainer
@@ -179,6 +180,119 @@ two risks that now outrank everything technical — adoption and authority.
 | Q2.10 | Whether developers may see each other's workload |
 | Q2.11 | Whether hierarchy controls permissions or is display only |
 | Q2.12 | What the analyst has misunderstood |
+
+### Answers (paraphrased)
+
+| Q | Answer |
+|---|---|
+| Q2.1 | Requests arrive by **email**, or **verbally** when urgent. Nothing structured. |
+| Q2.2 | **Developers themselves** create the record. A work item can be created **unassigned**. Assignment via a dropdown of people, with an "add new member" option. **Multiple people can be selected.** |
+| Q2.3 | (c) Genuine mix — but qualified: "mostly new bugs or CRs rather than planned". Clients overload the team with bugs and CRs, "hence the time delays". |
+| Q2.4 | All kinds exist. Work types must be **user-extendable** (e.g. add "BA work" later). |
+| Q2.5 | "Around 10" — ambiguous, re-asked as Q3.10. |
+| Q2.6 | Deflected to desired feature: configurable hierarchy controlling who can access and assign what. Current practice still unstated. |
+| Q2.7 | "Tracking bugs and time management." |
+| Q2.8 | No mandate yet — will **pitch to their manager**. Stated constraint: it must not be time-consuming to manage, nor hard to access and manage. |
+| Q2.9 | The **team lead** or someone more senior notices. |
+| Q2.10 | (c) Team-level, with the ability for the highest role to adjust who sees what and delegate that power downward. |
+| Q2.11 | (a) Hierarchy controls permissions. |
+| Q2.12 | Not sure yet. |
+
+### Outcomes of this round
+
+**Became KNOWN**
+
+- K-011: Intake is email plus verbal escalation for urgent items. No structured
+  intake exists.
+- K-012: **Developers are the intended authors of work records**, not managers.
+  Work items can exist in an unassigned state before anyone owns them.
+- K-013: A work item may have **multiple assignees**. Person↔WorkItem is
+  many-to-many, not a single owner field.
+- K-014: Work types must be extensible by users at runtime — a reference table,
+  not a fixed enum in code.
+- K-015: The **Team Lead is the person who notices stalled work today**, making
+  them the primary user of the day-one product, ahead of "management".
+- K-016: The delay mechanism is now explicit: **unplanned client bugs and CRs
+  displace planned work.** This is the causal story behind Round 1's F-002.
+- K-017: Hierarchy is intended to control permissions, not merely display.
+- K-018: Default visibility is team-level.
+
+**Significance of K-012 (worth calling out)**
+
+This substantially reduces R-003. The original adoption risk assumed managers
+would have to chase developers for data. If developers create the record when
+work reaches them, the record is a byproduct of receiving work rather than an
+administrative task layered on top. The design consequence: **item creation must
+be near-instant** — a title and nothing else should be enough to save.
+
+**Contradictions surfaced**
+
+- C-004: **Configurability vs. low management burden.** Q2.6, Q2.10 and Q2.11 all
+  ask for configurable hierarchy and permissions. Q2.8 states the product must
+  not be time-consuming or hard to manage. At ~10 people these goals are in
+  direct conflict — a permission engine must be configured before anyone can use
+  anything, and that setup cost lands on exactly the manager whose buy-in is
+  being sought. Recommendation and decision point raised as Q3.12.
+- C-005: Q2.3 selected "genuine mix" but the free text describes mostly reactive
+  work. Treated as **mix, weighted reactive** until contradicted.
+
+**Pattern noted (process observation, not a fault)**
+
+Three questions about *how things work today* (Q1.6, Q2.6, and partly Q2.4) were
+answered with *desired features* rather than current practice. Current
+assignment practice therefore remains partly UNKNOWN. This is normal for a
+technically-minded stakeholder, but it means feature requests are accumulating
+faster than the business rules that justify them.
+
+**Unresolved from this round**
+
+- U-011: Do different work types need **different fields and steps**, or the same
+  fields with a different label? Q2.4 said "all of them" without answering the
+  behavioural half. Decides whether the model is one simple table or several
+  shapes. (Q3.2)
+- U-012: What "multiple people on a task" means operationally, and how load is
+  attributed among them. (Q3.3, Q3.4)
+- U-013: Whether estimates and actual effort would realistically ever be typed.
+  Everything computational depends on this. (Q3.6)
+- U-014: Real headcount by role. (Q3.10)
+
+**Risk changes**
+
+- R-003 (adoption): **downgraded** from critical to moderate, on K-012.
+- R-004 (proxy stakeholder): **unchanged.** Still no manager contact. A-006
+  remains unverified — the pitch has not happened.
+- R-005 (new): **Over-specification for scale.** Configurable permissions,
+  drag-and-drop hierarchy and delegated visibility rights are enterprise
+  machinery being requested for a ten-person team. Cost is not just build time;
+  it is the setup burden that lands on the very stakeholder whose approval the
+  project depends on.
+
+---
+
+## Round 3 — Work Items, Effort & Scope
+
+**Status:** OPEN — awaiting answers
+**Date asked:** 2026-08-14
+**Deck:** `round-03-cards.html`
+
+Purpose: define the work item precisely enough to build a domain model, resolve
+how multiple assignees affect load, and get an honest read on whether effort data
+will ever exist. Intended as the **final discovery round**.
+
+| Q | Topic |
+|---|---|
+| Q3.1 | Real lifecycle of one bug, including waiting states *(pivot)* |
+| Q3.2 | Whether work types need different fields or just labels *(pivot)* |
+| Q3.3 | What "multiple people on a task" actually means *(pivot)* |
+| Q3.4 | How load is attributed across several assignees |
+| Q3.5 | Split, merge and mid-flight handover |
+| Q3.6 | Whether estimates and actuals would realistically be typed *(pivot)* |
+| Q3.7 | Minimum unit of work worth recording |
+| Q3.8 | Where deadlines originate — client-stated or calculated |
+| Q3.9 | Priority levels, who sets them, whether urgent jumps the queue |
+| Q3.10 | Real headcount by role, number of clients |
+| Q3.11 | Whether work groups by client/product, and whether that drives decisions |
+| Q3.12 | Fixed roles vs configurable permissions for v1 *(pivot, resolves C-004)* |
 
 ### Answers
 
