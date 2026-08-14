@@ -13,58 +13,74 @@
 **Phase 0 — Product Discovery**
 
 No coding. No architecture. No BRD yet.
-We are interviewing to understand the business before anything else.
 
 ## CURRENT OBJECTIVE
 
-Complete **Discovery Round 1: Problem & Business Objective**.
-Establish what problem is really being solved, for whom, and what "better"
-looks like in measurable terms.
+Round 1 complete. **Round 2 — Work, People & Authority** is open, awaiting
+answers. It re-asks what Round 1 left open and confronts the adoption question.
 
 ---
 
 ## WHAT WE KNOW (KNOWN)
 
-Sourced only from the initial project brief. Nothing validated yet.
+- K-001: The product helps managers understand developer workload, capacity,
+  availability, assignment feasibility and delivery risk.
+- K-002: Deterministic business logic owns capacity/ETA/scheduling. AI is an
+  interpretation layer only, never the source of truth.
+- K-003: Preferred starting stack (unchanged, still provisional): Python +
+  FastAPI, PostgreSQL, SQLAlchemy, Alembic, Next.js + TypeScript, Docker
+  Compose, pytest, modular monolith.
+- K-004: Out of scope for now: Kubernetes, Kafka, microservices, Redis, GraphQL.
+- K-005: Integrations (Jira, ADO, calendars, Slack, HR) are *eventual*, not
+  initial. Round 1 makes them less urgent still — there is nothing to integrate
+  with yet.
+- K-006: Single organization. Roles present: developers, testers, BA,
+  management.
+- K-007: **No current tool, no current process.** Work is assigned verbally;
+  nothing is tracked. This is process creation, not digitization.
+- K-008: Work arrives **reactively** — client CRs, bug reports, emails — not as
+  pre-planned project tasks.
+- K-009: Effort is neither estimated up front nor recorded afterwards today.
+- K-010: The requester is a developer building this for management on their own
+  initiative. Management has not asked for it.
 
-- K-001: The intended product helps managers answer questions about developer
-  workload, capacity, availability, assignment feasibility, and delivery risk.
-- K-002: Deterministic business logic must own capacity/ETA/scheduling.
-  AI is an interpretation and interaction layer only, never the source of truth.
-- K-003: Preferred starting stack (subject to change if discovery contradicts it):
-  Python + FastAPI, PostgreSQL, SQLAlchemy, Alembic, Next.js + TypeScript,
-  Docker Compose, pytest, modular monolith.
-- K-004: Explicitly out of scope for now: Kubernetes, Kafka, microservices,
-  Redis, GraphQL — unless a demonstrated requirement justifies them.
-- K-005: Integrations named as *eventual* (not initial): Jira, Azure DevOps,
-  GitHub/GitLab, Google Calendar, Outlook, Slack/Teams, HR/leave systems.
+## ASSUMED (must be validated)
 
-## WHAT IS ASSUMED (ASSUMED — must be validated)
+- A-001: ~~There is a real organization~~ → **CONFIRMED** as K-006.
+- A-002: Work is Projects → Tasks — **WEAKENED.** Looks queue-shaped. Re-tested
+  as Q2.3.
+- A-003: Managers assign top-down — provisionally supported (verbal assignment).
+  Re-tested as Q2.6.
+- A-004: Effort is estimable — **NOT SUPPORTED.** No estimation happens today;
+  it must be introduced as a new habit.
+- A-005: This system owns tasks — **provisionally CONFIRMED**, because there is
+  no existing system of record to mirror.
+- A-006 (new): Someone in management will support and mandate this. **Unverified
+  and load-bearing.** Q2.8.
 
-- A-001: There is a real organization with real managers who will use this.
-  *Not yet confirmed — may be a learning/portfolio project.*
-- A-002: Work is organized as Projects → Tasks. Real orgs may use epics,
-  sprints, tickets, support queues, or no formal structure at all.
-- A-003: Managers assign work to developers (top-down), rather than developers
-  self-selecting work from a backlog.
-- A-004: Effort is estimable in hours or days with useful accuracy.
-- A-005: This system will *own* task data rather than mirror it from Jira/ADO.
-  This is the single highest-impact unvalidated assumption.
+## UNKNOWN
 
-## WHAT IS UNKNOWN (UNKNOWN)
-
-- U-001: Is this a single-organization internal tool or a multi-tenant product?
-- U-002: Team size, number of projects, planning horizon.
-- U-003: How planning is done today and what specifically breaks.
-- U-004: Whether the primary pain is *visibility* (who is on what) or
-  *decision support* (who should take this) or *forecasting* (when will it ship).
-- U-005: What success would be measured by.
+- U-002: Team size, number of clients/products, planning horizon. (Q2.5)
+- U-006: Organization scale by role. (Q2.5)
+- U-007: Who has authority to mandate use. (Q2.8)
+- U-008: What developers gain from using it. (Q2.7)
+- U-009: Whether requests are recorded anywhere at all today. (Q2.1)
+- U-010: What decisions management actually makes weekly — the proxy stakeholder
+  does not know. Needs a real manager. (Round 3)
 
 ## DECIDED
 
-- D-001: Business-first sequence. Technology decisions are deferred until
-  requirements justify them.
+- D-001: Business-first sequence. Technology deferred until requirements justify
+  it.
 - D-002: Documentation lives in `/docs`; running context lives here.
+- D-003: **Visibility before decision support.** The stated goal (help managers
+  decide who takes work) depends on data that does not exist. We build the
+  record-keeping layer first, because everything else is computed from it.
+  Rationale in `docs/discovery/00-discovery-log.md`, contradiction C-001.
+- D-004: **Recommended wedge — the Work Register.** Every piece of work has a
+  name, an owner, a status and a date, on one shared screen, with stale items
+  and absent owners flagged. Directly addresses F-001..F-004. **Awaiting
+  confirmation.**
 
 ## REJECTED
 
@@ -72,21 +88,29 @@ Sourced only from the initial project brief. Nothing validated yet.
 
 ## OPEN QUESTIONS
 
-Tracked in `docs/discovery/00-discovery-log.md` — Round 1 is open and awaiting
-answers.
+Round 2 deck: `docs/discovery/round-02-cards.html`. Twelve questions, four
+marked as pivots.
 
 ## KNOWN ISSUES / RISKS
 
-- R-001: Scope in the initial brief is very large (planning + integrations + AI).
-  Risk of building broad and shallow. Discovery must find the narrow wedge.
-- R-002: If an existing tool (Jira/ADO) already owns tasks, this product may be
-  a *planning layer* rather than a *tracking system*. That changes the entire
-  data model. Must be resolved before the domain model.
+- R-001: Scope in the initial brief is very large. Mitigated by D-004 (wedge).
+- R-002: ~~SoR conflict with Jira/ADO~~ → **CLOSED.** No existing system of
+  record exists, so there is nothing to mirror or conflict with. Revisit only if
+  the organization adopts Jira later.
+- R-003: **Adoption risk — now the top risk.** New habit, stakeholders who did
+  not request the system, an organization that tracks nothing today. Engineering
+  quality cannot compensate. Every design decision should be weighed against
+  "does this make recording cheaper or more expensive?"
+- R-004: **Proxy stakeholder risk.** Our only business source is not the end
+  user and has said they don't know how management decides. Requirements traced
+  only to this source are marked TO VALIDATE until a real manager confirms them.
 
 ---
 
 ## NEXT ACTION
 
-Answer Discovery Round 1 questions in
-`docs/discovery/00-discovery-log.md` (or in conversation).
-Then: summarize → challenge → Round 2 (Users & Stakeholders).
+1. Answer Round 2 (`docs/discovery/round-02-cards.html`).
+2. In parallel, and more valuable than any answer in the deck: get 30 minutes
+   with one real manager. Question set to be provided.
+3. Then Round 3 — defining what a "task" is in this organization, which is the
+   precondition for the domain model.

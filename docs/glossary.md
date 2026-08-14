@@ -66,6 +66,51 @@ the right to expand by being indispensable at one thing first.
 integrations, and an AI layer. That is years of work. We need the one question
 that, answered well, would make a manager open this every Monday.
 
+### Proxy Stakeholder
+**What:** Someone who speaks *about* the users rather than *as* one — a developer
+describing what managers need, for example.
+**Why it exists:** Real users are often unavailable, so teams settle for the
+nearest informed person. Useful, but their knowledge has a known shape: strong on
+mechanics, weaker on why decisions get made the way they do.
+**Why it matters here:** Our only business source is building this for management
+on their own initiative, and has said plainly they don't know how management
+decides. That's honest and workable — but every requirement traced only to this
+source must be marked **TO VALIDATE** until a real manager confirms it.
+
+### Work Intake
+**What:** How work enters the organization — the doorway before anything is
+planned, estimated or assigned.
+**Why it exists:** Planning models usually start at "we have a list of tasks" and
+quietly assume the list appears by itself. In reality the intake shape determines
+the whole system: a planned backlog behaves nothing like an unpredictable queue.
+**Why it matters here:** Work here arrives as client change requests, bug reports
+and emails, unpredictably. That is a **queue**, not a plan. A queue-shaped system
+prioritizes triage, ownership and response time; a plan-shaped system prioritizes
+breakdown, sequencing and dependencies. Building the wrong one wastes weeks.
+
+### Adoption Risk
+**What:** The risk that a system is built correctly and then not used, leaving
+its data incomplete and therefore its outputs wrong.
+**Why it exists:** Software that asks people to record things competes with their
+actual job. If recording costs more than it returns, people stop — quietly, and
+usually without telling anyone.
+**Why it matters here:** Nothing is tracked today, so this system creates a new
+habit rather than replacing an existing one. Worse, every number it eventually
+produces — capacity, availability, ETA — is only as true as the data people
+bothered to enter. A capacity engine fed by 60%-complete data doesn't give you
+60%-correct answers; it gives you confident, wrong ones.
+
+### Leading vs Lagging Indicator
+**What:** A lagging indicator measures the outcome you want (fewer missed
+deadlines). A leading indicator measures the behaviour that produces it (work
+items having a recorded owner).
+**Why it exists:** Lagging indicators are what matter but move slowly and are
+influenced by everything. Leading indicators move immediately and tell you
+whether the mechanism is working before the outcome has had time to change.
+**Why it matters here:** "Client pressure stops" is the lagging goal and may take
+months to shift. "% of work items with a recorded owner" moves within a week and
+tells us early whether the system is being adopted at all.
+
 ---
 
 ## Domain terms (to be defined together — currently ambiguous)
