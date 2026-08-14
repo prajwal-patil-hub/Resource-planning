@@ -1,0 +1,840 @@
+<title>Round 1 Discovery Deck</title>
+<style>
+  :root {
+    --ground: #E6E8E3;
+    --surface: #F8F9F6;
+    --ink: #1B211D;
+    --ink-2: #4A544E;
+    --ink-3: #79837C;
+    --rule: #D2D6CE;
+    --rule-soft: #DEE1DA;
+    --accent: #2F6B4F;
+    --accent-ink: #FFFFFF;
+    --accent-soft: rgba(47, 107, 79, .12);
+    --flag: #A94D26;
+    --flag-soft: rgba(169, 77, 38, .11);
+    --shadow: 0 1px 2px rgba(27, 33, 29, .06), 0 12px 32px -12px rgba(27, 33, 29, .22);
+
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #111613;
+      --surface: #1A211D;
+      --ink: #E9ECE7;
+      --ink-2: #A5AFA7;
+      --ink-3: #767F78;
+      --rule: #2C352F;
+      --rule-soft: #232B26;
+      --accent: #74C398;
+      --accent-ink: #102017;
+      --accent-soft: rgba(116, 195, 152, .14);
+      --flag: #E19063;
+      --flag-soft: rgba(225, 144, 99, .13);
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 16px 40px -14px rgba(0, 0, 0, .6);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #111613;
+    --surface: #1A211D;
+    --ink: #E9ECE7;
+    --ink-2: #A5AFA7;
+    --ink-3: #767F78;
+    --rule: #2C352F;
+    --rule-soft: #232B26;
+    --accent: #74C398;
+    --accent-ink: #102017;
+    --accent-soft: rgba(116, 195, 152, .14);
+    --flag: #E19063;
+    --flag-soft: rgba(225, 144, 99, .13);
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 16px 40px -14px rgba(0, 0, 0, .6);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- Capacity strip: the deck's progress, drawn as an allocation bar ---------- */
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--ground);
+    border-bottom: 1px solid var(--rule-soft);
+    padding: 14px clamp(16px, 4vw, 32px) 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .topbar-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .deck-name {
+    font-family: var(--mono);
+    font-size: .7rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0;
+    font-weight: 500;
+  }
+
+  .counter {
+    font-family: var(--mono);
+    font-size: .7rem;
+    letter-spacing: .08em;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .counter b { color: var(--ink-2); font-weight: 600; }
+
+  .strip {
+    display: flex;
+    gap: 3px;
+    height: 6px;
+  }
+
+  .seg {
+    flex: 1;
+    background: var(--rule);
+    border-radius: 1px;
+    padding: 0;
+    border: 0;
+    cursor: pointer;
+    transition: background .18s ease, transform .18s ease;
+    position: relative;
+  }
+
+  .seg:hover { transform: scaleY(1.6); }
+  .seg.filled { background: var(--accent); }
+  .seg.current { background: var(--ink-2); }
+  .seg.current.filled { background: var(--accent); }
+  .seg.current::after {
+    content: "";
+    position: absolute;
+    inset: -5px -2px;
+    border: 1px solid var(--ink-3);
+    border-radius: 2px;
+  }
+  .seg:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  /* ---------- Stage ---------- */
+
+  .stage {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: clamp(20px, 5vh, 48px) clamp(16px, 4vw, 32px) 24px;
+    touch-action: pan-y;
+    overflow-x: hidden;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 660px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    box-shadow: var(--shadow);
+    padding: clamp(22px, 4.5vw, 38px);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .card.anim { animation: slide-in .28s cubic-bezier(.2, .7, .3, 1) both; }
+  .card.anim.back { animation-name: slide-in-back; }
+
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateX(26px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes slide-in-back {
+    from { opacity: 0; transform: translateX(-26px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card.anim, .card.anim.back { animation: none; }
+    .seg { transition: none; }
+  }
+
+  /* ---------- Card head ---------- */
+
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .qid {
+    font-family: var(--mono);
+    font-size: .74rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 3px 7px;
+    border-radius: 2px;
+  }
+
+  .group {
+    font-family: var(--mono);
+    font-size: .68rem;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .pivot {
+    font-family: var(--mono);
+    font-size: .64rem;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+    color: var(--flag);
+    background: var(--flag-soft);
+    padding: 3px 7px;
+    border-radius: 2px;
+    font-weight: 600;
+  }
+
+  h1.q {
+    font-family: var(--serif);
+    font-size: clamp(1.45rem, 4.2vw, 2rem);
+    line-height: 1.22;
+    letter-spacing: -.011em;
+    font-weight: 600;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .why {
+    font-size: .93rem;
+    line-height: 1.6;
+    color: var(--ink-2);
+    margin: 0;
+    padding-left: 13px;
+    border-left: 2px solid var(--rule);
+    max-width: 60ch;
+  }
+
+  .why em { color: var(--ink); font-style: italic; }
+
+  /* ---------- Options (Q1.2) ---------- */
+
+  .options { display: flex; flex-direction: column; gap: 8px; }
+
+  .opt {
+    display: flex;
+    gap: 11px;
+    align-items: flex-start;
+    text-align: left;
+    font: inherit;
+    font-size: .92rem;
+    line-height: 1.5;
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 11px 13px;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
+  }
+
+  .opt:hover { border-color: var(--ink-3); }
+  .opt[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .opt-key {
+    font-family: var(--mono);
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--ink-3);
+    padding-top: .1em;
+  }
+  .opt[aria-pressed="true"] .opt-key { color: var(--accent); }
+  .opt-key b { display: block; }
+
+  /* ---------- Answer field ---------- */
+
+  .field { display: flex; flex-direction: column; gap: 8px; }
+
+  label.field-label {
+    font-family: var(--mono);
+    font-size: .66rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  textarea {
+    font-family: var(--sans);
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--ink);
+    background: var(--ground);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 13px 14px;
+    resize: vertical;
+    min-height: 128px;
+    width: 100%;
+  }
+
+  textarea::placeholder { color: var(--ink-3); }
+  textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  .quick { display: flex; gap: 7px; flex-wrap: wrap; }
+
+  .chip {
+    font-family: var(--mono);
+    font-size: .7rem;
+    letter-spacing: .03em;
+    color: var(--ink-2);
+    background: transparent;
+    border: 1px dashed var(--rule);
+    border-radius: 2px;
+    padding: 5px 9px;
+    cursor: pointer;
+  }
+  .chip:hover { border-style: solid; border-color: var(--ink-3); color: var(--ink); }
+  .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- Nav ---------- */
+
+  .nav {
+    position: sticky;
+    bottom: 0;
+    background: var(--ground);
+    border-top: 1px solid var(--rule-soft);
+    padding: 12px clamp(16px, 4vw, 32px) max(12px, env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: space-between;
+  }
+
+  button.nav-btn {
+    font-family: var(--sans);
+    font-size: .88rem;
+    font-weight: 550;
+    padding: 10px 20px;
+    border-radius: 2px;
+    cursor: pointer;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  button.nav-btn:hover:not(:disabled) { border-color: var(--ink-3); }
+  button.nav-btn:disabled { opacity: .38; cursor: default; }
+  button.nav-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  button.nav-btn.primary:hover { filter: brightness(1.07); }
+  button.nav-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .hint {
+    font-family: var(--mono);
+    font-size: .66rem;
+    letter-spacing: .06em;
+    color: var(--ink-3);
+    text-align: center;
+  }
+  @media (max-width: 560px) { .hint { display: none; } }
+
+  /* ---------- Intro + review cards ---------- */
+
+  .lede {
+    font-size: 1rem;
+    line-height: 1.65;
+    color: var(--ink-2);
+    margin: 0;
+    max-width: 62ch;
+  }
+  .lede strong { color: var(--ink); font-weight: 600; }
+
+  .rule { height: 1px; background: var(--rule); border: 0; margin: 2px 0; width: 100%; }
+
+  .agenda { display: flex; flex-direction: column; gap: 11px; margin: 0; padding: 0; list-style: none; }
+
+  .agenda li { display: flex; gap: 12px; align-items: baseline; font-size: .93rem; line-height: 1.5; }
+
+  .agenda .k {
+    font-family: var(--mono);
+    font-size: .72rem;
+    color: var(--accent);
+    flex: none;
+    width: 1.3em;
+    font-weight: 600;
+  }
+  .agenda .t { color: var(--ink); }
+  .agenda .n { color: var(--ink-3); }
+
+  #out {
+    font-family: var(--mono);
+    font-size: .78rem;
+    line-height: 1.55;
+    min-height: 220px;
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow-x: auto;
+  }
+
+  .review-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+  .status { font-family: var(--mono); font-size: .72rem; color: var(--accent); }
+
+  .unanswered {
+    font-size: .88rem;
+    line-height: 1.55;
+    color: var(--flag);
+    margin: 0;
+  }
+</style>
+
+<header class="topbar">
+  <div class="topbar-row">
+    <p class="deck-name">Resource Planning · Phase 0 · Round 1</p>
+    <span class="counter" id="counter"></span>
+  </div>
+  <div class="strip" id="strip" role="group" aria-label="Question progress"></div>
+</header>
+
+<main class="stage" id="stage"></main>
+
+<nav class="nav">
+  <button class="nav-btn" id="prev" type="button">← Back</button>
+  <span class="hint">← → to move · answers save automatically</span>
+  <button class="nav-btn primary" id="next" type="button">Next →</button>
+</nav>
+
+<script>
+(function () {
+  "use strict";
+
+  var QUESTIONS = [
+    {
+      id: "Q1.1",
+      group: "A · The problem",
+      q: "Describe one real occasion when planning went wrong.",
+      why: "What happened, who was involved, and what did it cost? One concrete story with names and consequences tells me more than any abstract list of pain points — and it usually reveals the real problem, which is often not the one you'd have listed.",
+      ph: "Last quarter, we promised the client a delivery date and…"
+    },
+    {
+      id: "Q1.2",
+      group: "A · The problem",
+      pivot: true,
+      q: "Which is the primary pain?",
+      why: "Pick one. These lead to three genuinely different products — a live board, a recommendation engine, or a forecasting model. A system that chases all three does none of them well.",
+      options: [
+        { k: "a", t: "Visibility", d: "Nobody knows who is working on what right now." },
+        { k: "b", t: "Decision support", d: "Deciding who should take new work is slow, or we pick wrong." },
+        { k: "c", t: "Forecasting", d: "We cannot confidently say when work will be done." }
+      ],
+      ph: "Why that one — and what makes the other two secondary?"
+    },
+    {
+      id: "Q1.3",
+      group: "A · The problem",
+      q: "Why does the problem exist in the first place?",
+      why: "Missing data, scattered data, stale data, no agreed process, or nobody has time to do the analysis? The cause decides whether software can fix this at all. If the real cause is that nobody updates task status, a better dashboard changes nothing.",
+      ph: "The data exists but it's spread across…"
+    },
+    {
+      id: "Q1.4",
+      group: "B · Who has it",
+      q: "Who feels this most, by job title — and what do they do today when they feel it?",
+      why: "I want the workaround, not just the role. The manual thing someone does at 9pm on a Sunday is the feature specification hiding in plain sight.",
+      ph: "Team leads. When it happens they usually open a spreadsheet and…"
+    },
+    {
+      id: "Q1.5",
+      group: "B · Who has it",
+      pivot: true,
+      q: "One organization you know well, or a product for many organizations?",
+      why: "This decides whether we build one opinionated workflow or a configurable one — a very large difference in scope and schema. If it's primarily a learning or portfolio project, say so: that is a completely legitimate answer, it changes my advice, and it does not lower the bar.",
+      ph: "It's for… / Honestly it's mainly to learn, but I'd like it to be real enough that…"
+    },
+    {
+      id: "Q1.6",
+      group: "B · Who has it",
+      q: "How many people, teams, and concurrent projects are we planning for?",
+      why: "Ten developers and two hundred developers are different products. At ten, a manager holds the whole picture in their head and the value is bookkeeping. At two hundred, no human holds it and the value is the computation itself.",
+      ph: "Roughly … developers across … teams, working on … projects at once"
+    },
+    {
+      id: "Q1.7",
+      group: "C · How it's solved today",
+      q: "What holds the plan today — a spreadsheet, Jira, a whiteboard, someone's head?",
+      why: "Describe it concretely, columns and all. Whatever exists today already encodes the real business rules, and the current workaround is the most honest requirements document you have.",
+      ph: "A Google Sheet with one row per developer and one column per week…"
+    },
+    {
+      id: "Q1.8",
+      group: "C · How it's solved today",
+      pivot: true,
+      q: "Where does a task officially live today — and do you intend to replace that, or sit alongside it?",
+      why: "The System of Record question, and the highest-impact answer in this round. If Jira owns tasks, we mirror them and inherit sync, drift and staleness problems. If we own tasks, we inherit the adoption problem. A third option: we own planning data (allocation, capacity, leave) and borrow the rest.",
+      ph: "Tasks live in… I'd want this to…"
+    },
+    {
+      id: "Q1.9",
+      group: "C · How it's solved today",
+      q: "What specifically breaks about the current approach?",
+      why: "Be concrete: what is slow, what is wrong, what is missing, what is manual. Each answer here becomes a business requirement later, so vague pain produces vague requirements.",
+      ph: "It's always out of date by Wednesday because…"
+    },
+    {
+      id: "Q1.10",
+      group: "D · Decisions & success",
+      q: "Name the top 3 decisions a manager makes weekly that this should make faster or better.",
+      why: "Software earns its place by improving decisions, not by storing data. If we can't name the decision, we can't tell whether the feature worked.",
+      ph: "1.\n2.\n3."
+    },
+    {
+      id: "Q1.11",
+      group: "D · Decisions & success",
+      q: "If this works perfectly, what changes in the organization — and what would you measure to prove it?",
+      why: "A number you could actually observe. \"Better planning\" is not measurable; \"we stop discovering overload in the stand-up and start seeing it a week ahead\" is.",
+      ph: "Managers would stop… and I'd measure it by…"
+    },
+    {
+      id: "Q1.12",
+      group: "D · Decisions & success",
+      pivot: true,
+      q: "If we could ship only ONE screen or ONE answer, which one earns its place on day one?",
+      why: "This is the wedge — the narrowest thing that is genuinely useful on its own. Your brief describes roughly eighteen manager questions, seven integrations and an AI layer. Built all at once that's broad and shallow. Built as a wedge, it earns the right to expand.",
+      ph: "A single screen showing…"
+    }
+  ];
+
+  var STORE = "rp-discovery-r1";
+  var answers = {};
+  var index = 0;
+  var dir = 1;
+
+  function load() {
+    try {
+      var raw = window.localStorage.getItem(STORE);
+      if (raw) answers = JSON.parse(raw) || {};
+    } catch (e) { answers = {}; }
+  }
+
+  function save() {
+    try { window.localStorage.setItem(STORE, JSON.stringify(answers)); } catch (e) { /* private mode: session-only */ }
+  }
+
+  function isAnswered(i) {
+    var a = answers[QUESTIONS[i].id];
+    return !!(a && ((a.text && a.text.trim()) || a.choice));
+  }
+
+  function answeredCount() {
+    var n = 0;
+    for (var i = 0; i < QUESTIONS.length; i++) if (isAnswered(i)) n++;
+    return n;
+  }
+
+  var stage = document.getElementById("stage");
+  var strip = document.getElementById("strip");
+  var counter = document.getElementById("counter");
+  var prevBtn = document.getElementById("prev");
+  var nextBtn = document.getElementById("next");
+
+  // ---- progress strip: one segment per question, filled when answered ----
+  QUESTIONS.forEach(function (q, i) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "seg";
+    b.title = q.id;
+    b.setAttribute("aria-label", "Go to " + q.id);
+    b.addEventListener("click", function () { go(i + 1); });
+    strip.appendChild(b);
+  });
+
+  function paintStrip() {
+    var segs = strip.children;
+    for (var i = 0; i < segs.length; i++) {
+      segs[i].className = "seg" + (isAnswered(i) ? " filled" : "") + (index === i + 1 ? " current" : "");
+    }
+    var done = answeredCount();
+    if (index === 0) counter.textContent = "12 questions";
+    else if (index > QUESTIONS.length) counter.innerHTML = "<b>" + done + "</b> / 12 answered";
+    else counter.innerHTML = "Question <b>" + index + "</b> / 12 · " + done + " answered";
+  }
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  // ---- card renderers ----
+
+  function renderIntro(card) {
+    card.appendChild(el("span", "group", "Phase 0 · Product Discovery"));
+    var h = el("h1", "q", "Before we design anything, I need to understand the business.");
+    card.appendChild(h);
+
+    var p1 = el("p", "lede");
+    p1.innerHTML = "Twelve questions on the problem and the business objective. Answer in prose — <strong>rough and honest beats polished and vague</strong>. “I don't know” is a genuinely useful answer: it tells me what we need to go find out.";
+    card.appendChild(p1);
+
+    card.appendChild(el("hr", "rule"));
+
+    var ul = el("ul", "agenda");
+    [
+      ["A", "The problem", "what goes wrong, and why it happens"],
+      ["B", "Who has it", "roles, scale, and who this is really for"],
+      ["C", "How it's solved today", "the current tool, and who owns the data"],
+      ["D", "Decisions & success", "what we'd improve, and how we'd know"]
+    ].forEach(function (row) {
+      var li = document.createElement("li");
+      li.appendChild(el("span", "k", row[0]));
+      var t = el("span", "t", row[1]);
+      t.appendChild(el("span", "n", " — " + row[2]));
+      li.appendChild(t);
+      ul.appendChild(li);
+    });
+    card.appendChild(ul);
+
+    card.appendChild(el("hr", "rule"));
+
+    var p2 = el("p", "lede");
+    p2.innerHTML = "Four cards are marked <span class=\"pivot\">pivot</span>. Those answers change the architecture, not just the feature list — spend your time there.";
+    card.appendChild(p2);
+  }
+
+  function renderQuestion(card, q) {
+    var meta = el("div", "meta");
+    meta.appendChild(el("span", "qid", q.id));
+    meta.appendChild(el("span", "group", q.group));
+    if (q.pivot) meta.appendChild(el("span", "pivot", "Pivot"));
+    card.appendChild(meta);
+
+    card.appendChild(el("h1", "q", q.q));
+    card.appendChild(el("p", "why", q.why));
+
+    var rec = answers[q.id] || {};
+
+    if (q.options) {
+      var wrap = el("div", "options");
+      q.options.forEach(function (o) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "opt";
+        b.setAttribute("aria-pressed", rec.choice === o.k ? "true" : "false");
+        var key = el("span", "opt-key");
+        key.appendChild(el("b", null, "(" + o.k + ")"));
+        b.appendChild(key);
+        var body = document.createElement("span");
+        var strong = document.createElement("strong");
+        strong.textContent = o.t + " — ";
+        body.appendChild(strong);
+        body.appendChild(document.createTextNode(o.d));
+        b.appendChild(body);
+        b.addEventListener("click", function () {
+          var cur = answers[q.id] || {};
+          cur.choice = cur.choice === o.k ? null : o.k;
+          answers[q.id] = cur;
+          save();
+          Array.prototype.forEach.call(wrap.children, function (child, i) {
+            child.setAttribute("aria-pressed", q.options[i].k === cur.choice ? "true" : "false");
+          });
+          paintStrip();
+        });
+        wrap.appendChild(b);
+      });
+      card.appendChild(wrap);
+    }
+
+    var field = el("div", "field");
+    var lab = el("label", "field-label", q.options ? "Why that one" : "Your answer");
+    lab.setAttribute("for", "ta");
+    field.appendChild(lab);
+
+    var ta = document.createElement("textarea");
+    ta.id = "ta";
+    ta.placeholder = q.ph || "";
+    ta.value = rec.text || "";
+    ta.addEventListener("input", function () {
+      var cur = answers[q.id] || {};
+      cur.text = ta.value;
+      answers[q.id] = cur;
+      save();
+      paintStrip();
+    });
+    field.appendChild(ta);
+
+    var quick = el("div", "quick");
+    [
+      ["Not sure yet", "Not sure yet — needs investigating."],
+      ["Doesn't apply", "Doesn't apply to my situation."],
+      ["Come back to this", "Flagged — come back to this one."]
+    ].forEach(function (pair) {
+      var c = el("button", "chip", pair[0]);
+      c.type = "button";
+      c.addEventListener("click", function () {
+        ta.value = ta.value.trim() ? ta.value.replace(/\s*$/, "") + "\n" + pair[1] : pair[1];
+        ta.dispatchEvent(new Event("input"));
+        ta.focus();
+      });
+      quick.appendChild(c);
+    });
+    field.appendChild(quick);
+
+    card.appendChild(field);
+  }
+
+  function buildMarkdown() {
+    var lines = ["## Discovery Round 1 — Problem & Business Objective", ""];
+    QUESTIONS.forEach(function (q) {
+      var a = answers[q.id] || {};
+      lines.push("**" + q.id + " — " + q.q + "**");
+      if (q.options) {
+        var chosen = null;
+        q.options.forEach(function (o) { if (o.k === a.choice) chosen = o; });
+        lines.push("Answer: " + (chosen ? "(" + chosen.k + ") " + chosen.t : "— not selected —"));
+      }
+      var t = (a.text || "").trim();
+      lines.push(t || "_(no answer)_");
+      lines.push("");
+    });
+    return lines.join("\n");
+  }
+
+  function renderReview(card) {
+    card.appendChild(el("span", "group", "End of Round 1"));
+    card.appendChild(el("h1", "q", "Your answers, ready to send back."));
+
+    var missing = [];
+    QUESTIONS.forEach(function (q, i) { if (!isAnswered(i)) missing.push(q.id); });
+
+    var p = el("p", "lede");
+    p.innerHTML = "Copy this and paste it into the chat. I'll summarize it back to you, name the contradictions and assumptions I heard, record what's now settled in the discovery log, then move to <strong>Round 2 — Users &amp; Stakeholders</strong>.";
+    card.appendChild(p);
+
+    if (missing.length) {
+      card.appendChild(el("p", "unanswered", "Still blank: " + missing.join(", ") + ". Partial answers are fine — send what you have."));
+    }
+
+    var out = document.createElement("textarea");
+    out.id = "out";
+    out.readOnly = true;
+    out.value = buildMarkdown();
+    card.appendChild(out);
+
+    var actions = el("div", "review-actions");
+    var copy = el("button", "nav-btn primary", "Copy answers");
+    copy.type = "button";
+    var status = el("span", "status", "");
+    copy.addEventListener("click", function () {
+      var text = out.value;
+      function ok() { status.textContent = "Copied."; setTimeout(function () { status.textContent = ""; }, 2400); }
+      function manual() { out.focus(); out.select(); status.textContent = "Press ⌘/Ctrl+C to copy."; }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(ok, function () {
+          out.select();
+          try { document.execCommand("copy") ? ok() : manual(); } catch (e) { manual(); }
+        });
+      } else {
+        out.select();
+        try { document.execCommand("copy") ? ok() : manual(); } catch (e) { manual(); }
+      }
+    });
+    actions.appendChild(copy);
+
+    var restart = el("button", "nav-btn", "Back to start");
+    restart.type = "button";
+    restart.addEventListener("click", function () { go(0); });
+    actions.appendChild(restart);
+    actions.appendChild(status);
+    card.appendChild(actions);
+  }
+
+  function render() {
+    stage.innerHTML = "";
+    var card = el("div", "card anim" + (dir < 0 ? " back" : ""));
+
+    if (index === 0) renderIntro(card);
+    else if (index <= QUESTIONS.length) renderQuestion(card, QUESTIONS[index - 1]);
+    else renderReview(card);
+
+    stage.appendChild(card);
+
+    prevBtn.disabled = index === 0;
+    nextBtn.textContent = index === 0 ? "Start →"
+      : index === QUESTIONS.length ? "Review →"
+      : index > QUESTIONS.length ? "Done" : "Next →";
+    nextBtn.disabled = index > QUESTIONS.length;
+
+    paintStrip();
+    window.scrollTo(0, 0);
+  }
+
+  function go(i) {
+    var target = Math.max(0, Math.min(QUESTIONS.length + 1, i));
+    if (target === index) return;
+    dir = target > index ? 1 : -1;
+    index = target;
+    render();
+  }
+
+  prevBtn.addEventListener("click", function () { go(index - 1); });
+  nextBtn.addEventListener("click", function () { go(index + 1); });
+
+  // ---- keyboard: arrows navigate, but never while typing ----
+  document.addEventListener("keydown", function (e) {
+    var t = document.activeElement;
+    if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT")) return;
+    if (e.key === "ArrowRight") { e.preventDefault(); go(index + 1); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); go(index - 1); }
+  });
+
+  // ---- swipe: horizontal drag anywhere except the text field ----
+  var sx = 0, sy = 0, tracking = false;
+
+  stage.addEventListener("pointerdown", function (e) {
+    var t = e.target;
+    if (t && (t.tagName === "TEXTAREA" || t.tagName === "BUTTON" || t.closest("button"))) return;
+    tracking = true;
+    sx = e.clientX;
+    sy = e.clientY;
+  });
+
+  stage.addEventListener("pointerup", function (e) {
+    if (!tracking) return;
+    tracking = false;
+    var dx = e.clientX - sx;
+    var dy = e.clientY - sy;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.6) go(index + (dx < 0 ? 1 : -1));
+  });
+
+  stage.addEventListener("pointercancel", function () { tracking = false; });
+
+  load();
+  render();
+})();
+</script>
