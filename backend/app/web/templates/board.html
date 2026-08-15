@@ -3,7 +3,7 @@
 
 <div class="shell">
   {{ shell.topbar(view) }}
-  {{ shell.loadstrip(loads) }}
+  {{ shell.loadstrip(loads, teams, selected_teams, all_teams, view, sort|default('priority'), dir|default('asc')) }}
 
   <main class="board">
     {% for state, label, entries in columns %}

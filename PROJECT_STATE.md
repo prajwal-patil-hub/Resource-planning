@@ -176,6 +176,16 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
   tutorial's three inset shadows are used verbatim in geometry, with alpha
   scaled per surface size — full strength on small cards washes out text.
   Method and fidelity ledger in `docs/13-ui-extraction-prompt.md`.
+- D-022: **Team filter resolves through the OWNER's team.** A work item has no
+  team of its own; giving it one would be a second place for the same fact to
+  live and drift.
+- D-023: **Unowned work is never hidden by the team filter.** It belongs to no
+  team, so filtering would make it vanish — recreating F-001, the exact problem
+  the product exists to prevent. A filter that can hide unclaimed work is a bug.
+- D-024: **Light theme is a re-lighting, not an inversion.** On a light ground
+  white inner glows are invisible; depth comes from soft dark inner shadows plus
+  a bright top highlight. Semantic colours are re-tuned for contrast, which is
+  why they were kept separate from the glass palette.
 - D-013: **Optimistic locking** for concurrent edits to one work item.
   Notably *not* needed for concurrent assignment — nothing is reserved under
   ADR-001, so two assignments simply show as higher load, which is accurate.
@@ -238,8 +248,7 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 
 ## NEXT ACTION
 
-1. **Look at the board and table screenshots** and confirm the glass level is
-   right — it was tuned down once already, from washed-out to dark translucent.
+1. **Confirm the light theme and team filter**, then choose Feature 2.
 2. **Pitch it.** Still outstanding after four phases. ASM-2 remains the only
    assumption whose failure ends the project.
 3. Choose Feature 2 — recommended: **authentication and people management**,

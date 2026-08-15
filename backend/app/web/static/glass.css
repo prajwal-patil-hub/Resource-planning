@@ -78,9 +78,188 @@
   --ease: cubic-bezier(0.22, 0.7, 0.28, 1);
   --dur: 240ms;
 
+  --select-bg: #1a212b;
+  --dock-fade: linear-gradient(to top, rgba(10, 14, 20, 0.55) 0%, transparent 100%);
+  --thead-bg: rgba(18, 24, 32, 0.86);
+  --row-hover: rgba(255, 255, 255, 0.07);
+  --rule: rgba(255, 255, 255, 0.07);
+  --card-hover-bg: rgba(46, 58, 74, 0.62);
+  --btn-bg: rgba(255, 255, 255, 0.14);
+  --btn-bg-hover: rgba(255, 255, 255, 0.22);
+  --btn-primary-bg: rgba(255, 255, 255, 0.92);
+  --btn-primary-ink: #12161d;
+  --toggle-on: rgba(255, 255, 255, 0.16);
+  --avatar-bg: rgba(255, 255, 255, 0.20);
+  --pip-off: rgba(255, 255, 255, 0.24);
+  --focus-ring: rgba(255, 255, 255, 0.6);
+  --focus-ring-soft: rgba(255, 255, 255, 0.10);
+  --input-focus-border: rgba(255, 255, 255, 0.45);
+  --error-bg: rgba(240, 121, 140, 0.14);
+  --error-border: rgba(240, 121, 140, 0.42);
+  --error-text: #ffd9df;
+  --opaque-panel: #1a2029;
+  --opaque-card: #242c37;
+  --popover-fill: rgba(24, 31, 41, 0.97);
+
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
+
+/* ==========================================================================
+   LIGHT THEME
+
+   Not an inversion. On a light ground, white inner glows are invisible — depth
+   has to come from soft DARK inner shadows plus a bright top highlight. The
+   geometry from the extraction is preserved; only the light direction flips.
+
+   Three states are handled: explicit light, explicit dark, and the unstamped
+   default where only the OS preference decides.
+   ========================================================================== */
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) { color-scheme: light; }
+}
+:root[data-theme="light"] { color-scheme: light; }
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --app-background:
+      radial-gradient(58% 44% at 12% 4%,  rgba(255, 214, 200, 0.85) 0%, transparent 60%),
+      radial-gradient(50% 42% at 86% 8%,  rgba(206, 224, 255, 0.90) 0%, transparent 58%),
+      radial-gradient(62% 54% at 74% 92%, rgba(206, 240, 232, 0.80) 0%, transparent 62%),
+      radial-gradient(42% 36% at 30% 74%, rgba(226, 214, 250, 0.70) 0%, transparent 60%),
+      linear-gradient(158deg, #f4f6fa 0%, #eceff5 46%, #e4e8ef 100%);
+    --app-background-base: #eceff5;
+
+    --glass-inner-1: inset 3px 3px 10px 2px rgba(255, 255, 255, 0.85);
+    --glass-inner-2: inset -2px -3px 14px 1px rgba(23, 38, 58, 0.07);
+    --glass-inner-3: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+
+    --card-inner-1: inset 2px 2px 8px 1px rgba(255, 255, 255, 0.80);
+    --card-inner-2: inset -1px -2px 10px 1px rgba(23, 38, 58, 0.05);
+    --card-inner-3: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+
+    --glass-fill: rgba(255, 255, 255, 0.55);
+    --glass-fill-raised: rgba(255, 255, 255, 0.74);
+    --glass-fill-sunk: rgba(23, 38, 58, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.95);
+    --glass-border-soft: rgba(23, 38, 58, 0.11);
+    --glass-shadow: 0 1px 2px rgba(23, 38, 58, 0.06), 0 18px 40px -20px rgba(23, 38, 58, 0.28);
+    --glass-shadow-card: 0 1px 2px rgba(23, 38, 58, 0.05), 0 8px 18px -12px rgba(23, 38, 58, 0.22);
+    --glass-saturate: 1.6;
+
+    --glass-dispersion:
+      linear-gradient(135deg,
+        rgba(120, 170, 255, 0.07) 0%,
+        rgba(255, 255, 255, 0.00) 36%,
+        rgba(255, 255, 255, 0.00) 64%,
+        rgba(255, 150, 180, 0.06) 100%);
+
+    --text: #16202c;
+    --text-2: rgba(22, 32, 44, 0.72);
+    --text-3: rgba(22, 32, 44, 0.50);
+
+    /* Semantic colours re-tuned for contrast on a light ground. Same meanings,
+       different values — this is why they are separate from the glass palette. */
+    --ok: #0f9d70;
+    --warn: #b0761a;
+    --risk: #cf5f2c;
+    --stop: #cb3552;
+    --info: #2b76bd;
+
+    --select-bg: #ffffff;
+    --dock-fade: linear-gradient(to top, rgba(236, 239, 245, 0.75) 0%, transparent 100%);
+    --thead-bg: rgba(252, 253, 255, 0.90);
+    --row-hover: rgba(23, 38, 58, 0.045);
+    --rule: rgba(23, 38, 58, 0.08);
+    --card-hover-bg: rgba(255, 255, 255, 0.92);
+    --btn-bg: rgba(255, 255, 255, 0.80);
+    --btn-bg-hover: #ffffff;
+    --btn-primary-bg: #16202c;
+    --btn-primary-ink: #ffffff;
+    --toggle-on: rgba(255, 255, 255, 0.95);
+    --avatar-bg: rgba(23, 38, 58, 0.10);
+    --pip-off: rgba(23, 38, 58, 0.16);
+    --focus-ring: rgba(22, 32, 44, 0.55);
+    --focus-ring-soft: rgba(22, 32, 44, 0.10);
+    --input-focus-border: rgba(22, 32, 44, 0.40);
+    --error-bg: rgba(203, 53, 82, 0.09);
+    --error-border: rgba(203, 53, 82, 0.35);
+    --error-text: #8d1f38;
+    --opaque-panel: #f7f9fc;
+    --opaque-card: #ffffff;
+    --popover-fill: rgba(252, 253, 255, 0.985);
+  }
+}
+
+:root[data-theme="light"] {
+  --app-background:
+    radial-gradient(58% 44% at 12% 4%,  rgba(255, 214, 200, 0.85) 0%, transparent 60%),
+    radial-gradient(50% 42% at 86% 8%,  rgba(206, 224, 255, 0.90) 0%, transparent 58%),
+    radial-gradient(62% 54% at 74% 92%, rgba(206, 240, 232, 0.80) 0%, transparent 62%),
+    radial-gradient(42% 36% at 30% 74%, rgba(226, 214, 250, 0.70) 0%, transparent 60%),
+    linear-gradient(158deg, #f4f6fa 0%, #eceff5 46%, #e4e8ef 100%);
+  --app-background-base: #eceff5;
+
+  --glass-inner-1: inset 3px 3px 10px 2px rgba(255, 255, 255, 0.85);
+  --glass-inner-2: inset -2px -3px 14px 1px rgba(23, 38, 58, 0.07);
+  --glass-inner-3: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+
+  --card-inner-1: inset 2px 2px 8px 1px rgba(255, 255, 255, 0.80);
+  --card-inner-2: inset -1px -2px 10px 1px rgba(23, 38, 58, 0.05);
+  --card-inner-3: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+
+  --glass-fill: rgba(255, 255, 255, 0.55);
+  --glass-fill-raised: rgba(255, 255, 255, 0.74);
+  --glass-fill-sunk: rgba(23, 38, 58, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.95);
+  --glass-border-soft: rgba(23, 38, 58, 0.11);
+  --glass-shadow: 0 1px 2px rgba(23, 38, 58, 0.06), 0 18px 40px -20px rgba(23, 38, 58, 0.28);
+  --glass-shadow-card: 0 1px 2px rgba(23, 38, 58, 0.05), 0 8px 18px -12px rgba(23, 38, 58, 0.22);
+  --glass-saturate: 1.6;
+
+  --glass-dispersion:
+    linear-gradient(135deg,
+      rgba(120, 170, 255, 0.07) 0%,
+      rgba(255, 255, 255, 0.00) 36%,
+      rgba(255, 255, 255, 0.00) 64%,
+      rgba(255, 150, 180, 0.06) 100%);
+
+  --text: #16202c;
+  --text-2: rgba(22, 32, 44, 0.72);
+  --text-3: rgba(22, 32, 44, 0.50);
+
+  /* Semantic colours re-tuned for contrast on a light ground. Same meanings,
+     different values — this is why they are separate from the glass palette. */
+  --ok: #0f9d70;
+  --warn: #b0761a;
+  --risk: #cf5f2c;
+  --stop: #cb3552;
+  --info: #2b76bd;
+
+  --select-bg: #ffffff;
+  --dock-fade: linear-gradient(to top, rgba(236, 239, 245, 0.75) 0%, transparent 100%);
+  --thead-bg: rgba(252, 253, 255, 0.90);
+  --row-hover: rgba(23, 38, 58, 0.045);
+  --rule: rgba(23, 38, 58, 0.08);
+  --card-hover-bg: rgba(255, 255, 255, 0.92);
+  --btn-bg: rgba(255, 255, 255, 0.80);
+  --btn-bg-hover: #ffffff;
+  --btn-primary-bg: #16202c;
+  --btn-primary-ink: #ffffff;
+  --toggle-on: rgba(255, 255, 255, 0.95);
+  --avatar-bg: rgba(23, 38, 58, 0.10);
+  --pip-off: rgba(23, 38, 58, 0.16);
+  --focus-ring: rgba(22, 32, 44, 0.55);
+  --focus-ring-soft: rgba(22, 32, 44, 0.10);
+  --input-focus-border: rgba(22, 32, 44, 0.40);
+  --error-bg: rgba(203, 53, 82, 0.09);
+  --error-border: rgba(203, 53, 82, 0.35);
+  --error-text: #8d1f38;
+  --opaque-panel: #f7f9fc;
+  --opaque-card: #ffffff;
+}
+
 
 * { box-sizing: border-box; }
 
@@ -144,18 +323,18 @@ body {
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass { background-color: rgba(26, 33, 43, 0.94); }
-  .glass-raised { background-color: rgba(38, 46, 58, 0.95); }
+  .glass { background-color: var(--opaque-panel); }
+  .glass-raised { background-color: var(--opaque-card); }
 }
 
 @media (prefers-reduced-transparency: reduce) {
   .glass, .glass-raised {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
-    background-color: #1a2029;
+    background-color: var(--opaque-panel);
     box-shadow: var(--glass-shadow);
   }
-  .glass-raised { background-color: #242c37; }
+  .glass-raised { background-color: var(--opaque-card); }
   .glass::before, .glass-raised::before { display: none; }
 }
 
@@ -262,12 +441,12 @@ body {
 .toggle a:hover { color: var(--text); }
 
 .toggle a[aria-current="page"] {
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--toggle-on);
   color: var(--text);
-  box-shadow: var(--glass-inner-1), inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+  box-shadow: var(--glass-inner-1), inset 0 -1px 0 rgba(0, 0, 0, 0.10);
 }
 
-.toggle a:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.6); outline-offset: 2px; }
+.toggle a:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
 /* ==========================================================================
    Controls
@@ -288,19 +467,19 @@ input[type="text"], select, textarea {
 input[type="text"]::placeholder { color: var(--text-3); }
 
 input[type="text"]:focus, select:focus, textarea:focus {
-  border-color: rgba(255, 255, 255, 0.45);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.10);
+  border-color: var(--input-focus-border);
+  box-shadow: 0 0 0 3px var(--focus-ring-soft);
 }
 
 select { cursor: pointer; }
-select option { background: #1a212b; color: #fff; }
+select option { background: var(--select-bg); color: var(--text); }
 
 .btn {
   font-family: var(--sans);
   font-size: 0.86rem;
   font-weight: 550;
   color: var(--text);
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--btn-bg);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   padding: 9px 16px;
@@ -310,11 +489,11 @@ select option { background: #1a212b; color: #fff; }
   transition: background var(--dur) var(--ease), transform 140ms var(--ease);
 }
 
-.btn:hover { background: rgba(255, 255, 255, 0.22); }
+.btn:hover { background: var(--btn-bg-hover); }
 .btn:active { transform: translateY(1px); }
-.btn:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.6); outline-offset: 2px; }
-.btn-primary { background: rgba(255, 255, 255, 0.92); color: #12161d; border-color: transparent; }
-.btn-primary:hover { background: #fff; }
+.btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.btn-primary { background: var(--btn-primary-bg); color: var(--btn-primary-ink); border-color: transparent; }
+.btn-primary:hover { filter: brightness(1.08); }
 .btn-sm { padding: 6px 11px; font-size: 0.78rem; }
 
 /* ==========================================================================
@@ -335,7 +514,7 @@ select option { background: #1a212b; color: #fff; }
   justify-content: center;
   pointer-events: none;
   z-index: 40;
-  background: linear-gradient(to top, rgba(10, 14, 20, 0.55) 0%, transparent 100%);
+  background: var(--dock-fade);
 }
 
 .composer {
@@ -357,7 +536,7 @@ select option { background: #1a212b; color: #fff; }
   box-shadow: var(--glass-inner-1), var(--glass-inner-2), var(--glass-inner-3),
               0 2px 6px rgba(0, 0, 0, 0.28),
               0 28px 60px -22px rgba(0, 0, 0, 0.7),
-              0 0 0 3px rgba(255, 255, 255, 0.09);
+              0 0 0 3px var(--focus-ring-soft);
 }
 
 .composer input[type="text"] {
@@ -401,12 +580,24 @@ select option { background: #1a212b; color: #fff; }
    Load strip
    ========================================================================== */
 
+/* The strip itself must NOT clip, or the team dropdown is cut off —
+   overflow-x: auto clips vertically too. Only the chips scroll. */
 .loads {
   display: flex;
   gap: 9px;
   padding: 11px 16px;
-  overflow-x: auto;
   align-items: center;
+  overflow: visible;
+}
+
+.load-scroll {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  overflow-x: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-bottom: 1px;
 }
 
 .load-label {
@@ -441,7 +632,7 @@ select option { background: #1a212b; color: #fff; }
   width: 5px;
   height: 12px;
   border-radius: 1px;
-  background: rgba(255, 255, 255, 0.24);
+  background: var(--pip-off);
 }
 
 .pip.on { background: var(--ok); }
@@ -511,10 +702,10 @@ select option { background: #1a212b; color: #fff; }
 .card:hover {
   transform: translateY(-2px);
   border-color: var(--glass-border);
-  background-color: rgba(46, 58, 74, 0.62);
+  background-color: var(--card-hover-bg);
 }
 
-.card:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.6); outline-offset: 2px; }
+.card:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
 .card-title {
   font-size: 0.89rem;
@@ -542,7 +733,7 @@ select option { background: #1a212b; color: #fff; }
   width: 19px;
   height: 19px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.20);
+  background: var(--avatar-bg);
   display: grid;
   place-items: center;
   font-size: 0.6rem;
@@ -601,7 +792,7 @@ table.grid thead th {
   color: var(--text-3);
   padding: 13px 14px;
   white-space: nowrap;
-  background: rgba(18, 24, 32, 0.86);
+  background: var(--thead-bg);
   -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--glass-border-soft);
@@ -624,11 +815,11 @@ table.grid tbody tr {
   animation: settle-in 300ms var(--ease) both;
 }
 
-table.grid tbody tr:hover { background: rgba(255, 255, 255, 0.07); }
+table.grid tbody tr:hover { background: var(--row-hover); }
 
 table.grid td {
   padding: 12px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid var(--rule);
   color: var(--text-2);
   vertical-align: middle;
 }
@@ -748,8 +939,8 @@ table.grid td.t-num { font-family: var(--mono); font-variant-numeric: tabular-nu
   width: 11px;
   height: 11px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.32);
-  border: 2px solid rgba(0, 0, 0, 0.35);
+  background: var(--pip-off);
+  border: 2px solid var(--glass-fill-sunk);
   margin-top: 3px;
   z-index: 1;
   flex: none;
@@ -779,9 +970,9 @@ table.grid td.t-num { font-family: var(--mono); font-variant-numeric: tabular-nu
 .error {
   padding: 11px 14px;
   border-radius: var(--radius-sm);
-  background: rgba(240, 121, 140, 0.14);
-  border: 1px solid rgba(240, 121, 140, 0.42);
-  color: #ffd9df;
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  color: var(--error-text);
   font-size: 0.83rem;
   animation: rise-in 300ms var(--ease) both;
 }
@@ -803,3 +994,108 @@ table.hist th {
   color: var(--text-3);
 }
 table.hist td:first-child { color: var(--text); }
+
+/* ==========================================================================
+   Theme toggle
+   ========================================================================== */
+
+.theme-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.95rem;
+  line-height: 1;
+  flex: none;
+}
+
+/* Show the icon for the theme you would switch TO, not the one you are in —
+   a control should say what it does, not what is currently true. */
+.theme-icon-light { display: none; }
+.theme-icon-dark { display: inline; }
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .theme-icon-light { display: inline; }
+  :root:not([data-theme="dark"]) .theme-icon-dark { display: none; }
+}
+:root[data-theme="light"] .theme-icon-light { display: inline; }
+:root[data-theme="light"] .theme-icon-dark { display: none; }
+:root[data-theme="dark"] .theme-icon-light { display: none; }
+:root[data-theme="dark"] .theme-icon-dark { display: inline; }
+
+/* ==========================================================================
+   Team filter — sits at the end of the load strip
+   ========================================================================== */
+
+.team-filter { position: relative; flex: none; }
+
+.team-filter summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  background: var(--glass-fill-sunk);
+  border: 1px solid var(--glass-border-soft);
+  font-size: 0.78rem;
+  color: var(--text);
+  white-space: nowrap;
+  transition: border-color var(--dur) var(--ease);
+}
+
+.team-filter summary::-webkit-details-marker { display: none; }
+.team-filter summary:hover { border-color: var(--glass-border); }
+.team-filter summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+.team-filter .chev { color: var(--text-3); font-size: 0.7rem; transition: transform var(--dur) var(--ease); }
+.team-filter[open] .chev { transform: rotate(180deg); }
+
+.team-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+  min-width: 216px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  animation: rise-in 220ms var(--ease) both;
+  /* Near-opaque: a dropdown you can read the page through is unusable. */
+  background-color: var(--popover-fill);
+}
+
+.team-opt {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  border-radius: var(--radius-sm);
+  font-size: 0.84rem;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease);
+}
+
+.team-opt:hover { background: var(--row-hover); }
+.team-opt input { accent-color: var(--ok); width: 15px; height: 15px; cursor: pointer; }
+
+.team-rule { height: 1px; background: var(--rule); margin: 5px 2px; }
+
+.team-note {
+  font-size: 0.71rem;
+  color: var(--text-3);
+  line-height: 1.4;
+  margin: 8px 2px 10px;
+}
+
+.team-panel .btn { align-self: stretch; text-align: center; }
+
+/* .glass sets `isolation: isolate`, so each panel forms its own stacking
+   context and a child's z-index cannot escape it. The team dropdown therefore
+   needs its whole strip raised above the board, not just the panel raised
+   within the strip. */
+.loads { position: relative; z-index: 20; }
+.board, .table-wrap { position: relative; z-index: 1; }

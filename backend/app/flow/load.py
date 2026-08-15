@@ -52,12 +52,20 @@ class PersonLoad:
         )
 
 
-def load_for_team(session: Session, team_id: int | None = None, *, today: date | None = None) -> list[PersonLoad]:
-    """Current load for every active person, optionally scoped to one team."""
+def load_for_team(
+    session: Session,
+    team_id: int | None = None,
+    *,
+    team_ids: list[int] | None = None,
+    today: date | None = None,
+) -> list[PersonLoad]:
+    """Current load per active person, optionally scoped to one or more teams."""
     today = today or datetime.now(UTC).date()
 
     query = select(Person).where(Person.active.is_(True))
-    if team_id is not None:
+    if team_ids is not None:
+        query = query.where(Person.team_id.in_(team_ids))
+    elif team_id is not None:
         query = query.where(Person.team_id == team_id)
     people = list(session.scalars(query.order_by(Person.name)))
 

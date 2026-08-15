@@ -14,7 +14,7 @@
 
 <div class="shell">
   {{ shell.topbar(view) }}
-  {{ shell.loadstrip(loads) }}
+  {{ shell.loadstrip(loads, teams, selected_teams, all_teams, view, sort|default('priority'), dir|default('asc')) }}
 
   <main class="table-wrap glass anim-rise" style="animation-delay:90ms">
     <table class="grid">

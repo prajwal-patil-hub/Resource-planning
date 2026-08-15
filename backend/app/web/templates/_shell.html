@@ -11,6 +11,19 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{{ title }}</title>
+  {# Applied before the stylesheet so the page never paints the wrong theme
+     and then corrects itself. Three states: explicit light, explicit dark,
+     and no choice at all — where the OS preference decides. #}
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("rp-theme");
+        if (t === "light" || t === "dark") {
+          document.documentElement.setAttribute("data-theme", t);
+        }
+      } catch (e) { /* private mode: fall back to the OS preference */ }
+    })();
+  </script>
   <link rel="stylesheet" href="/static/glass.css" />
 </head>
 <body>
@@ -25,13 +38,32 @@
     <a href="/?view=board" {% if view == 'board' %}aria-current="page"{% endif %}>Board</a>
     <a href="/?view=table" {% if view == 'table' %}aria-current="page"{% endif %}>Table</a>
   </nav>
+  <button class="btn btn-sm theme-btn" type="button" id="theme-toggle"
+          aria-label="Switch between light and dark">
+    <span class="theme-icon-dark">☾</span><span class="theme-icon-light">☀</span>
+  </button>
 </header>
+<script>
+  document.getElementById("theme-toggle").addEventListener("click", function () {
+    var root = document.documentElement;
+    // No stamp yet means the OS is deciding; read what it actually resolved to
+    // so the first click always flips what the user is looking at.
+    var current = root.getAttribute("data-theme");
+    if (!current) {
+      current = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    var next = current === "light" ? "dark" : "light";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("rp-theme", next); } catch (e) {}
+  });
+</script>
 {% endmacro %}
 
 
-{% macro loadstrip(loads) %}
+{% macro loadstrip(loads, teams, selected_teams, all_teams, view, sort, dir) %}
 <section class="loads glass anim-rise" style="animation-delay:60ms" aria-label="Team load">
   <span class="load-label">Load</span>
+  <div class="load-scroll">
   {% for l in loads %}
   <span class="load-chip {% if l.is_overloaded %}over{% elif l.has_room %}room{% endif %} {% if l.absent_today %}away{% endif %}"
         title="{{ l.explanation }}">
@@ -45,9 +77,59 @@
     {% if l.absent_today %}<span title="Away today">away</span>{% endif %}
   </span>
   {% else %}
-  <span class="empty">No people yet.</span>
+  <span class="empty">No people in this selection.</span>
   {% endfor %}
+  </div>
+
+  {# Team filter. A native <details> disclosure — no JS, keyboard-accessible,
+     and it degrades to an always-open list if scripting is off. #}
+  <details class="team-filter">
+    <summary>
+      <span class="team-summary-label">
+        {%- if all_teams -%}All teams
+        {%- elif selected_teams | length == 1 -%}
+          {%- for t in teams if t.id in selected_teams -%}{{ t.name }}{%- endfor -%}
+        {%- else -%}{{ selected_teams | length }} teams
+        {%- endif -%}
+      </span>
+      <span class="chev" aria-hidden="true">▾</span>
+    </summary>
+    <form class="team-panel glass" method="get" action="/">
+      <input type="hidden" name="view" value="{{ view }}" />
+      <input type="hidden" name="sort" value="{{ sort or 'priority' }}" />
+      <input type="hidden" name="dir" value="{{ dir or 'asc' }}" />
+      <label class="team-opt">
+        <input type="checkbox" id="team-all" {% if all_teams %}checked{% endif %} />
+        <span><strong>All teams</strong></span>
+      </label>
+      <div class="team-rule"></div>
+      {% for t in teams %}
+      <label class="team-opt">
+        <input type="checkbox" name="team" value="{{ t.id }}"
+               class="team-box" {% if all_teams or t.id in selected_teams %}checked{% endif %} />
+        <span>{{ t.name }}</span>
+      </label>
+      {% endfor %}
+      <p class="team-note">Work nobody owns is always shown, whichever teams are selected.</p>
+      <button class="btn btn-sm" type="submit">Apply</button>
+    </form>
+  </details>
 </section>
+<script>
+  (function () {
+    var all = document.getElementById("team-all");
+    if (!all) return;
+    var boxes = Array.prototype.slice.call(document.querySelectorAll(".team-box"));
+    all.addEventListener("change", function () {
+      boxes.forEach(function (b) { b.checked = all.checked; });
+    });
+    boxes.forEach(function (b) {
+      b.addEventListener("change", function () {
+        all.checked = boxes.every(function (x) { return x.checked; });
+      });
+    });
+  })();
+</script>
 {% endmacro %}
 
 

@@ -13,7 +13,7 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Form, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Form, Header, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -25,7 +25,7 @@ from app.config import settings
 from app.db import get_session
 from app.flow.load import load_for_team
 from app.flow.timeline import build_timeline, format_duration, state_label
-from app.models import Client, Person, WorkItem, WorkItemType
+from app.models import Client, Person, Team, WorkItem, WorkItemParticipant, WorkItemType
 from app.work.lifecycle import LABELS, OPEN_STATES, IllegalTransition, State
 from app.work.service import (
     WorkItemError,
@@ -311,15 +311,44 @@ ORDER BY {order} {direction} NULLS LAST, w.id DESC
 """
 
 
-def _table_rows(session: Session, *, sort: str, direction: str, include_closed: bool):
+#: Filtering by team resolves through the OWNER's team — a work item has no
+#: team of its own, and inventing one would be a second place for the same fact
+#: to live and drift.
+#:
+#: Unowned items therefore belong to no team. They are ALWAYS shown, whatever
+#: filter is active. Hiding them would mean the one thing the product exists to
+#: prevent — work nobody has picked up quietly disappearing from view (F-001,
+#: BO-1). A filter that can hide unclaimed work is a filter that recreates the
+#: original problem.
+TEAM_CLAUSE = """(
+    wip.person_id IS NULL
+    OR p.team_id = ANY(:team_ids)
+)"""
+
+
+def _selected_team_ids(raw: list[int] | None, teams: list) -> list[int]:
+    """Empty selection means all teams — the safe default is to hide nothing."""
+    if not raw:
+        return [t.id for t in teams]
+    valid = {t.id for t in teams}
+    chosen = [t for t in raw if t in valid]
+    return chosen or [t.id for t in teams]
+
+
+def _table_rows(
+    session: Session, *, sort: str, direction: str, include_closed: bool,
+    team_ids: list[int],
+):
     order = SORTABLE.get(sort, SORTABLE["priority"])
     direction = "DESC" if direction.lower() == "desc" else "ASC"
-    where = "" if include_closed else "WHERE w.state NOT IN ('DONE','CANCELLED')"
+    clauses = [] if include_closed else ["w.state NOT IN ('DONE','CANCELLED')"]
+    clauses.append(TEAM_CLAUSE)
+    where = "WHERE " + " AND ".join(clauses)
     sql = TABLE_SQL.format(where=where, order=order, direction=direction)
 
     now = datetime.now(UTC)
     rows = []
-    for r in session.execute(text(sql)).mappings():
+    for r in session.execute(text(sql), {"team_ids": team_ids}).mappings():
         last_moved = r["last_moved"]
         first_seen = r["first_seen"]
         rows.append(
@@ -357,14 +386,24 @@ def page_board(
     view: str = "board",
     sort: str = "priority",
     dir: str = "asc",
+    team: list[int] = Query(default=[]),
     session: Session = Depends(get_session),
 ):
+    teams = list(session.scalars(select(Team).where(Team.active.is_(True)).order_by(Team.name)))
+    team_ids = _selected_team_ids(team, teams)
+    all_selected = len(team_ids) == len(teams)
+
     common = {
         "view": view if view in ("board", "table") else "board",
         "people": list(session.scalars(select(Person).where(Person.active.is_(True)).order_by(Person.name))),
         "types": list(session.scalars(select(WorkItemType).where(WorkItemType.active.is_(True)).order_by(WorkItemType.sort_order))),
         "clients": list(session.scalars(select(Client).where(Client.active.is_(True)).order_by(Client.name))),
-        "loads": load_for_team(session),
+        # The load strip narrows with the filter too — showing every person's
+        # load beside one team's board would be comparing different things.
+        "loads": load_for_team(session, team_ids=None if all_selected else team_ids),
+        "teams": teams,
+        "selected_teams": set(team_ids) if not all_selected else set(),
+        "all_teams": all_selected,
     }
 
     if common["view"] == "table":
@@ -373,7 +412,10 @@ def page_board(
             "table.html",
             {
                 **common,
-                "rows": _table_rows(session, sort=sort, direction=dir, include_closed=False),
+                "rows": _table_rows(
+                    session, sort=sort, direction=dir, include_closed=False,
+                    team_ids=team_ids,
+                ),
                 "sort": sort,
                 "dir": dir,
             },
@@ -382,7 +424,18 @@ def page_board(
     items = list(
         session.scalars(
             select(WorkItem)
-            .where(WorkItem.state.in_([s.value for s in OPEN_STATES]))
+            .outerjoin(
+                WorkItemParticipant,
+                (WorkItemParticipant.work_item_id == WorkItem.id)
+                & (WorkItemParticipant.participation == "OWNER")
+                & (WorkItemParticipant.to_ts.is_(None)),
+            )
+            .outerjoin(Person, Person.id == WorkItemParticipant.person_id)
+            .where(
+                WorkItem.state.in_([s.value for s in OPEN_STATES]),
+                # Unowned work always survives the filter — see TEAM_CLAUSE.
+                (WorkItemParticipant.id.is_(None)) | (Person.team_id.in_(team_ids)),
+            )
             .order_by(WorkItem.priority, WorkItem.id.desc())
         )
     )
