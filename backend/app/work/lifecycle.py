@@ -67,7 +67,10 @@ OPEN_STATES: frozenset[State] = frozenset(s for s in State) - TERMINAL
 #: Human-facing labels. Kept beside the machine so a new state cannot be added
 #: without someone deciding what to call it.
 LABELS: dict[State, str] = {
-    State.NEW: "Unassigned",
+    # "New" not "Unassigned": an item can be in NEW and already have an owner —
+    # recorded but not yet triaged. Ownership is a separate fact, shown
+    # separately. Conflating the two made the table contradict itself.
+    State.NEW: "New",
     State.QUEUED: "Queued",
     State.IN_PROGRESS: "In progress",
     State.ON_HOLD_PREEMPTED: "On hold",

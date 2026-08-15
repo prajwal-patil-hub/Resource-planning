@@ -1,56 +1,82 @@
 /* ==========================================================================
-   Glass design system — ADR-004
+   Glass design system — ADR-004, built to docs/13-ui-extraction-prompt.md
 
    The background is ONE property. Change --app-background and the whole
-   interface re-seats over it. Nothing below ever references the background
-   directly.
+   interface re-seats over it. Nothing below ever references it directly.
    ========================================================================== */
 
 :root {
   /* ---- THE ONE THING TO CHANGE LATER ----------------------------------
-     Replace with url(...), a gradient, or a solid colour.
-     Everything else adapts.                                              */
+     Replace with url("..."), a gradient, or a solid colour.
+
+     Note from the extraction: glass needs something VARIED behind it. A flat
+     ground makes the material invisible, which is why this placeholder carries
+     high-contrast, multi-hue pools rather than a gentle wash.               */
   --app-background:
-    radial-gradient(120% 90% at 12% 8%, #4a5b6e 0%, transparent 55%),
-    radial-gradient(110% 80% at 88% 12%, #3d4a5c 0%, transparent 50%),
-    linear-gradient(168deg, #2b3440 0%, #1a2028 48%, #12161c 100%);
+    radial-gradient(58% 44% at 14% 6%,  rgba(126, 168, 214, 0.55) 0%, transparent 62%),
+    radial-gradient(48% 40% at 84% 10%, rgba(196, 142, 178, 0.42) 0%, transparent 60%),
+    radial-gradient(62% 52% at 72% 88%, rgba(88, 150, 158, 0.40) 0%, transparent 64%),
+    radial-gradient(40% 34% at 34% 72%, rgba(150, 130, 200, 0.30) 0%, transparent 62%),
+    linear-gradient(158deg, #223043 0%, #1a2230 42%, #0f141c 100%);
   --app-background-size: cover;
-  /* Opaque base behind the background layer. Anything the gradient or image
-     does not cover falls back to this rather than to the browser's white. */
-  --app-background-base: #12161c;
+  --app-background-base: #0f141c;
   /* ------------------------------------------------------------------- */
 
-  /* Glass recipe. The three inner shadows come straight from the reference
-     tutorial: light from above, opposing bevel below, soft frost spread. */
-  --glass-bg: rgba(28, 34, 42, 0.52);
-  --glass-bg-raised: rgba(38, 45, 55, 0.62);
-  --glass-bg-strong: rgba(22, 27, 34, 0.78);
-  --glass-blur: 22px;
-  --glass-saturate: 1.35;
-  --glass-border: rgba(255, 255, 255, 0.14);
-  --glass-border-strong: rgba(255, 255, 255, 0.22);
+  /* ---- Glass -----------------------------------------------------------
+     The reference tutorial states three inner shadows, white at 20%, with real
+     blur and spread. Those values are for ONE large hero shape on a bright
+     ground. Applied at full strength to small dark cards they wash out into
+     fog and cost text contrast — so the geometry is kept exactly and the alpha
+     is scaled per surface size. Reference A's panels are dark translucent with
+     a crisp bright edge, not milky.                                        */
+  --glass-inner-1: inset 4px 4px 12px 2px rgba(255, 255, 255, 0.11);
+  --glass-inner-2: inset -2px -2px 15px 1px rgba(255, 255, 255, 0.07);
+  --glass-inner-3: inset 0 0 15px 2px rgba(255, 255, 255, 0.05);
 
-  --glass-inner-top: inset 0 1px 0 rgba(255, 255, 255, 0.20);
-  --glass-inner-bottom: inset 0 -1px 0 rgba(0, 0, 0, 0.28);
-  --glass-inner-glow: inset 0 0 15px 2px rgba(255, 255, 255, 0.05);
-  --glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.28), 0 18px 40px -16px rgba(0, 0, 0, 0.55);
+  /* Cards are small; the same glows at panel strength swallow them. */
+  --card-inner-1: inset 3px 3px 10px 1px rgba(255, 255, 255, 0.09);
+  --card-inner-2: inset -2px -2px 12px 1px rgba(255, 255, 255, 0.05);
+  --card-inner-3: inset 0 1px 0 rgba(255, 255, 255, 0.22);
 
-  /* Text. Minimum opacity on surfaces guarantees these stay legible
-     whatever background is eventually chosen (ADR-004 rule 1). */
-  --text: rgba(255, 255, 255, 0.95);
-  --text-2: rgba(255, 255, 255, 0.70);
-  --text-3: rgba(255, 255, 255, 0.48);
+  /* Dark tint, not white wash — this is what makes text stay readable. */
+  --glass-fill: rgba(16, 22, 31, 0.46);
+  --glass-fill-raised: rgba(30, 38, 50, 0.52);
+  --glass-fill-sunk: rgba(8, 12, 18, 0.42);
+  --glass-blur: 34px;
+  --glass-blur-card: 20px;
+  --glass-saturate: 1.45;
+  --glass-border: rgba(255, 255, 255, 0.30);
+  --glass-border-soft: rgba(255, 255, 255, 0.15);
+  --glass-shadow: 0 2px 6px rgba(0, 0, 0, 0.30), 0 24px 48px -18px rgba(0, 0, 0, 0.70);
+  --glass-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.22), 0 10px 22px -12px rgba(0, 0, 0, 0.50);
 
-  /* Semantic colour is meaning, not decoration. Deliberately separate from
-     the glass palette so it reads against any background (ADR-004 rule 3). */
-  --ok: #5fd3a0;
-  --warn: #efb457;
-  --risk: #f08b64;
-  --stop: #e8697d;
-  --info: #74b3e8;
+  /* Dispersion, approximated: a faint warm/cool split across opposing edges.
+     CSS cannot split light chromatically; this is an impression of it. */
+  --glass-dispersion:
+    linear-gradient(135deg,
+      rgba(150, 200, 255, 0.07) 0%,
+      rgba(255, 255, 255, 0.00) 36%,
+      rgba(255, 255, 255, 0.00) 64%,
+      rgba(255, 190, 210, 0.06) 100%);
 
-  --radius: 14px;
-  --radius-sm: 9px;
+  --text: rgba(255, 255, 255, 0.96);
+  --text-2: rgba(255, 255, 255, 0.72);
+  --text-3: rgba(255, 255, 255, 0.50);
+
+  /* Semantic colour is meaning. Independent of the glass palette so it
+     survives the ground being swapped. */
+  --ok: #6fdcaa;
+  --warn: #f5c26b;
+  --risk: #f79a72;
+  --stop: #f0798c;
+  --info: #82bdf0;
+
+  --radius: 20px;
+  --radius-card: 14px;
+  --radius-sm: 10px;
+
+  --ease: cubic-bezier(0.22, 0.7, 0.28, 1);
+  --dur: 240ms;
 
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
@@ -68,68 +94,132 @@ body {
   font-family: var(--sans);
   color: var(--text);
   background: var(--app-background);
-  background-size: var(--app-background-size);
   background-color: var(--app-background-base);
+  background-size: var(--app-background-size);
   background-attachment: fixed;
   background-position: center;
   -webkit-font-smoothing: antialiased;
   min-height: 100dvh;
 }
 
-/* ---- The glass surface ------------------------------------------------ */
+/* ==========================================================================
+   The glass surface
+   ========================================================================== */
 
-.glass {
-  background: var(--glass-bg);
+.glass, .glass-raised {
+  position: relative;
+  background-color: var(--glass-fill);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--glass-border-soft);
+  border-top-color: var(--glass-border);
   border-radius: var(--radius);
-  box-shadow: var(--glass-inner-top), var(--glass-inner-bottom),
-              var(--glass-inner-glow), var(--glass-shadow);
+  box-shadow: var(--glass-inner-1), var(--glass-inner-2), var(--glass-inner-3),
+              var(--glass-shadow);
+  isolation: isolate;
 }
 
 .glass-raised {
-  background: var(--glass-bg-raised);
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.7)) saturate(var(--glass-saturate));
-  backdrop-filter: blur(calc(var(--glass-blur) * 0.7)) saturate(var(--glass-saturate));
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--glass-inner-top), var(--glass-inner-bottom),
-              0 2px 10px -4px rgba(0, 0, 0, 0.5);
+  background-color: var(--glass-fill-raised);
+  -webkit-backdrop-filter: blur(var(--glass-blur-card)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-card)) saturate(var(--glass-saturate));
+  border-radius: var(--radius-card);
+  box-shadow: var(--card-inner-1), var(--card-inner-2), var(--card-inner-3),
+              var(--glass-shadow-card);
 }
 
-/* Where backdrop-filter is unsupported, fall back to a solid tint at the same
-   contrast. The design loses beauty and keeps every bit of its information. */
+/* Dispersion + frost overlay. Frost is fine SVG noise at very low opacity —
+   the closest CSS gets to a material grain. */
+.glass::before, .glass-raised::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: -1;
+  background-image: var(--glass-dispersion),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.30'/%3E%3C/svg%3E");
+  background-blend-mode: overlay;
+  opacity: 0.45;
+}
+
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass { background: rgba(24, 29, 36, 0.94); }
-  .glass-raised { background: rgba(36, 43, 52, 0.96); }
+  .glass { background-color: rgba(26, 33, 43, 0.94); }
+  .glass-raised { background-color: rgba(38, 46, 58, 0.95); }
 }
 
-/* ADR-004: blur is decoration, never information. */
 @media (prefers-reduced-transparency: reduce) {
   .glass, .glass-raised {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
-    background: #1a2029;
+    background-color: #1a2029;
+    box-shadow: var(--glass-shadow);
   }
-  .glass-raised { background: #242b34; }
+  .glass-raised { background-color: #242c37; }
+  .glass::before, .glass-raised::before { display: none; }
 }
 
-/* ---- Layout ----------------------------------------------------------- */
+/* ==========================================================================
+   Motion. Glass is heavy and damped — it settles, it never bounces.
+   ========================================================================== */
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes settle-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.994); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes sweep {
+  from { background-position: -140% 0; }
+  to   { background-position: 240% 0; }
+}
+
+.anim-rise { animation: rise-in 420ms var(--ease) both; }
+.anim-settle { animation: settle-in 300ms var(--ease) both; }
+
+/* Staggered entrance. Capped at 10 so a large board does not crawl in. */
+.stagger > * { animation: rise-in 380ms var(--ease) both; }
+.stagger > *:nth-child(1) { animation-delay: 20ms; }
+.stagger > *:nth-child(2) { animation-delay: 50ms; }
+.stagger > *:nth-child(3) { animation-delay: 80ms; }
+.stagger > *:nth-child(4) { animation-delay: 110ms; }
+.stagger > *:nth-child(5) { animation-delay: 140ms; }
+.stagger > *:nth-child(6) { animation-delay: 170ms; }
+.stagger > *:nth-child(7) { animation-delay: 200ms; }
+.stagger > *:nth-child(8) { animation-delay: 230ms; }
+.stagger > *:nth-child(n+9) { animation-delay: 260ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ==========================================================================
+   Layout
+   ========================================================================== */
 
 .shell {
   min-height: 100dvh;
-  padding: clamp(14px, 2.4vw, 26px);
+  padding: clamp(14px, 2.2vw, 24px);
+  /* Room for the fixed composer so the last row is never hidden behind it. */
+  padding-bottom: 132px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .topbar {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 13px 18px;
+  gap: 14px;
+  padding: 12px 18px;
   flex-wrap: wrap;
 }
 
@@ -143,65 +233,225 @@ body {
 
 .brand span { color: var(--text-3); font-weight: 400; }
 
-/* ---- Quick add: the most important control in the product -------------
-   BR-002 / D-005. Title is the only required field. Everything else is an
-   optional adornment sitting to its right, so the fast path is: type, Enter. */
+.spacer { flex: 1; }
 
-.quick-add {
+/* ---- View toggle, top right ------------------------------------------- */
+
+.toggle {
   display: flex;
-  gap: 8px;
-  align-items: center;
-  flex: 1 1 460px;
-  min-width: 260px;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--glass-fill-sunk);
+  border: 1px solid var(--glass-border-soft);
 }
 
-.quick-add input[type="text"] {
-  flex: 1 1 auto;
-  min-width: 140px;
+.toggle a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 550;
+  color: var(--text-3);
+  text-decoration: none;
+  transition: color var(--dur) var(--ease), background var(--dur) var(--ease);
 }
+
+.toggle a:hover { color: var(--text); }
+
+.toggle a[aria-current="page"] {
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--text);
+  box-shadow: var(--glass-inner-1), inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+}
+
+.toggle a:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.6); outline-offset: 2px; }
+
+/* ==========================================================================
+   Controls
+   ========================================================================== */
 
 input[type="text"], select, textarea {
   font-family: var(--sans);
   font-size: 0.88rem;
   color: var(--text);
-  background: rgba(0, 0, 0, 0.26);
-  border: 1px solid var(--glass-border);
+  background: var(--glass-fill-sunk);
+  border: 1px solid var(--glass-border-soft);
   border-radius: var(--radius-sm);
   padding: 9px 12px;
   outline: none;
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
 
 input[type="text"]::placeholder { color: var(--text-3); }
 
 input[type="text"]:focus, select:focus, textarea:focus {
-  border-color: rgba(255, 255, 255, 0.4);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.10);
 }
 
 select { cursor: pointer; }
-select option { background: #1c222a; color: #fff; }
+select option { background: #1a212b; color: #fff; }
 
 .btn {
   font-family: var(--sans);
   font-size: 0.86rem;
   font-weight: 550;
   color: var(--text);
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid var(--glass-border-strong);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   padding: 9px 16px;
   cursor: pointer;
   white-space: nowrap;
-  box-shadow: var(--glass-inner-top);
+  box-shadow: var(--glass-inner-1);
+  transition: background var(--dur) var(--ease), transform 140ms var(--ease);
 }
 
-.btn:hover { background: rgba(255, 255, 255, 0.19); }
+.btn:hover { background: rgba(255, 255, 255, 0.22); }
+.btn:active { transform: translateY(1px); }
 .btn:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.6); outline-offset: 2px; }
-.btn-primary { background: rgba(255, 255, 255, 0.9); color: #161b21; border-color: transparent; }
+.btn-primary { background: rgba(255, 255, 255, 0.92); color: #12161d; border-color: transparent; }
 .btn-primary:hover { background: #fff; }
 .btn-sm { padding: 6px 11px; font-size: 0.78rem; }
 
-/* ---- Board ------------------------------------------------------------ */
+/* ==========================================================================
+   Composer — fixed to the bottom.
+
+   Recording is the behaviour the entire product depends on (BR-002, D-005),
+   so it sits where the hands already are, always reachable, never behind a
+   modal or a button.
+   ========================================================================== */
+
+.composer-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 14px clamp(14px, 2.2vw, 24px) clamp(16px, 2vw, 22px);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 40;
+  background: linear-gradient(to top, rgba(10, 14, 20, 0.55) 0%, transparent 100%);
+}
+
+.composer {
+  pointer-events: auto;
+  width: min(940px, 100%);
+  padding: 10px 10px 10px 16px;
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  transition: box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease);
+  animation: rise-in 500ms var(--ease) both;
+  animation-delay: 120ms;
+}
+
+.composer:focus-within {
+  transform: translateY(-2px);
+  box-shadow: var(--glass-inner-1), var(--glass-inner-2), var(--glass-inner-3),
+              0 2px 6px rgba(0, 0, 0, 0.28),
+              0 28px 60px -22px rgba(0, 0, 0, 0.7),
+              0 0 0 3px rgba(255, 255, 255, 0.09);
+}
+
+.composer input[type="text"] {
+  flex: 1 1 320px;
+  min-width: 200px;
+  font-size: 0.98rem;
+  background: transparent;
+  border: 0;
+  padding: 10px 2px;
+}
+
+.composer input[type="text"]:focus { box-shadow: none; }
+
+.composer select {
+  font-size: 0.8rem;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: var(--glass-fill-sunk);
+}
+
+.composer-send {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex: none;
+  font-size: 1rem;
+}
+
+.composer-hint {
+  width: min(940px, 100%);
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--text-3);
+  margin-top: 7px;
+}
+
+/* ==========================================================================
+   Load strip
+   ========================================================================== */
+
+.loads {
+  display: flex;
+  gap: 9px;
+  padding: 11px 16px;
+  overflow-x: auto;
+  align-items: center;
+}
+
+.load-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  white-space: nowrap;
+  margin-right: 4px;
+}
+
+.load-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--glass-fill-sunk);
+  border: 1px solid var(--glass-border-soft);
+  white-space: nowrap;
+  font-size: 0.78rem;
+  transition: border-color var(--dur) var(--ease);
+}
+
+.load-chip.over { border-color: var(--risk); color: var(--risk); }
+.load-chip.room { border-color: rgba(111, 220, 170, 0.45); }
+.load-chip.away { opacity: 0.55; }
+
+.load-bar { display: flex; gap: 2px; }
+
+.pip {
+  width: 5px;
+  height: 12px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.pip.on { background: var(--ok); }
+.pip.over { background: var(--risk); }
+
+.load-num { font-family: var(--mono); font-size: 0.72rem; font-variant-numeric: tabular-nums; }
+
+/* ==========================================================================
+   Board
+   ========================================================================== */
 
 .board {
   display: flex;
@@ -213,12 +463,12 @@ select option { background: #1c222a; color: #fff; }
 }
 
 .column {
-  flex: 0 0 268px;
+  flex: 0 0 272px;
   padding: 13px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: calc(100dvh - 190px);
+  max-height: calc(100dvh - 300px);
 }
 
 .column-head {
@@ -229,9 +479,9 @@ select option { background: #1c222a; color: #fff; }
 }
 
 .column-title {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-2);
   margin: 0;
@@ -241,9 +491,9 @@ select option { background: #1c222a; color: #fff; }
   font-family: var(--mono);
   font-size: 0.72rem;
   color: var(--text-3);
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 20px;
-  padding: 2px 8px;
+  background: var(--glass-fill-sunk);
+  border-radius: 999px;
+  padding: 2px 9px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -251,20 +501,30 @@ select option { background: #1c222a; color: #fff; }
 
 .card {
   display: block;
-  padding: 12px;
+  padding: 13px;
   text-decoration: none;
   color: inherit;
-  transition: transform 0.12s ease, border-color 0.12s ease;
+  transition: transform 160ms var(--ease), border-color 160ms var(--ease),
+              background-color 160ms var(--ease);
 }
 
-.card:hover { transform: translateY(-1px); border-color: var(--glass-border-strong); }
+.card:hover {
+  transform: translateY(-2px);
+  border-color: var(--glass-border);
+  background-color: rgba(46, 58, 74, 0.62);
+}
+
 .card:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.6); outline-offset: 2px; }
 
 .card-title {
   font-size: 0.89rem;
   line-height: 1.35;
-  margin: 0 0 8px;
+  margin: 0 0 9px;
   color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .card-meta {
@@ -276,121 +536,147 @@ select option { background: #1c222a; color: #fff; }
   color: var(--text-3);
 }
 
-.owner {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--text-2);
-}
+.owner { display: inline-flex; align-items: center; gap: 5px; color: var(--text-2); }
 
 .avatar {
-  width: 18px;
-  height: 18px;
+  width: 19px;
+  height: 19px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.20);
   display: grid;
   place-items: center;
   font-size: 0.6rem;
   font-weight: 600;
   color: var(--text);
+  flex: none;
 }
 
 .unowned { color: var(--risk); }
 
-/* Priority reads as shape + colour, never colour alone. */
 .pri {
   font-family: var(--mono);
   font-size: 0.67rem;
   font-weight: 700;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: 5px;
   border: 1px solid currentColor;
   letter-spacing: 0.02em;
+  flex: none;
 }
 
 .pri-0 { color: var(--stop); }
 .pri-1 { color: var(--risk); }
 .pri-2 { color: var(--text-3); }
-.pri-3, .pri-4 { color: var(--text-3); opacity: 0.75; }
+.pri-3, .pri-4 { color: var(--text-3); opacity: 0.72; }
 
-.stale {
-  color: var(--warn);
-  font-family: var(--mono);
-  font-size: 0.7rem;
+.empty { font-size: 0.78rem; color: var(--text-3); padding: 10px 2px; font-style: italic; }
+
+/* ==========================================================================
+   Table view
+   ========================================================================== */
+
+.table-wrap {
+  padding: 0;
+  overflow: auto;
+  flex: 1;
+  max-height: calc(100dvh - 250px);
 }
 
-.empty {
-  font-size: 0.78rem;
-  color: var(--text-3);
-  padding: 10px 2px;
-  font-style: italic;
+table.grid {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.83rem;
 }
 
-/* ---- Load strip ------------------------------------------------------- */
-
-.loads {
-  display: flex;
-  gap: 9px;
-  padding: 12px 16px;
-  overflow-x: auto;
-  align-items: center;
-}
-
-.load-label {
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
+table.grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  text-align: left;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--text-3);
+  padding: 13px 14px;
   white-space: nowrap;
-  margin-right: 4px;
+  background: rgba(18, 24, 32, 0.86);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--glass-border-soft);
 }
 
-.load-chip {
-  display: flex;
+table.grid thead th a {
+  color: inherit;
+  text-decoration: none;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 11px;
-  border-radius: 20px;
-  background: rgba(0, 0, 0, 0.26);
-  border: 1px solid var(--glass-border);
+  gap: 5px;
+  transition: color var(--dur) var(--ease);
+}
+
+table.grid thead th a:hover { color: var(--text); }
+table.grid thead th .sort { color: var(--text); font-size: 0.7rem; }
+
+table.grid tbody tr {
+  transition: background-color 140ms var(--ease);
+  animation: settle-in 300ms var(--ease) both;
+}
+
+table.grid tbody tr:hover { background: rgba(255, 255, 255, 0.07); }
+
+table.grid td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  color: var(--text-2);
+  vertical-align: middle;
+}
+
+table.grid td.t-id { font-family: var(--mono); color: var(--text-3); font-variant-numeric: tabular-nums; }
+
+table.grid td.t-title { color: var(--text); max-width: 380px; }
+table.grid td.t-title a { color: inherit; text-decoration: none; }
+table.grid td.t-title a:hover { text-decoration: underline; }
+
+table.grid td.t-num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.state-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  background: var(--glass-fill-sunk);
+  border: 1px solid var(--glass-border-soft);
   white-space: nowrap;
-  font-size: 0.78rem;
 }
 
-.load-chip.over { border-color: var(--risk); color: var(--risk); }
-.load-chip.room { border-color: rgba(95, 211, 160, 0.5); }
-.load-chip.away { opacity: 0.55; }
+.state-pill .dot { width: 7px; height: 7px; margin: 0; border: 0; }
 
-.load-bar {
-  display: flex;
-  gap: 2px;
-}
+.assignee { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
 
-.pip {
-  width: 5px;
-  height: 12px;
-  border-radius: 1px;
-  background: rgba(255, 255, 255, 0.22);
-}
+.stale-flag { color: var(--warn); font-family: var(--mono); font-size: 0.72rem; }
+.overdue-flag { color: var(--stop); font-family: var(--mono); font-size: 0.72rem; }
 
-.pip.on { background: var(--ok); }
-.pip.over { background: var(--risk); }
-
-/* ---- Detail page ------------------------------------------------------ */
+/* ==========================================================================
+   Detail page
+   ========================================================================== */
 
 .detail {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
   align-items: start;
 }
 
 @media (max-width: 900px) { .detail { grid-template-columns: 1fr; } }
 
-.panel { padding: 18px; }
+.panel { padding: 19px; }
 
 .panel h2 {
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   font-weight: 600;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -398,43 +684,36 @@ select option { background: #1c222a; color: #fff; }
   margin: 0 0 14px;
 }
 
-.item-title {
-  font-size: 1.3rem;
-  line-height: 1.25;
-  margin: 0 0 10px;
-  text-wrap: balance;
-}
+.item-title { font-size: 1.32rem; line-height: 1.25; margin: 0 0 11px; text-wrap: balance; }
 
 .chip-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
 
 .chip {
   font-size: 0.74rem;
-  padding: 4px 10px;
-  border-radius: 20px;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid var(--glass-border);
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--glass-fill-sunk);
+  border: 1px solid var(--glass-border-soft);
   color: var(--text-2);
 }
 
-.chip-state { color: var(--text); border-color: var(--glass-border-strong); }
+.chip-state { color: var(--text); border-color: var(--glass-border); }
 
-/* Measures. Every one is derived (ADR-001), so each carries its own note. */
-.measures {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
-  gap: 10px;
-}
+.measures { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 10px; }
 
 .measure {
-  padding: 11px 13px;
+  padding: 12px 13px;
   border-radius: var(--radius-sm);
-  background: rgba(0, 0, 0, 0.24);
-  border: 1px solid var(--glass-border);
+  background: var(--glass-fill-sunk);
+  border: 1px solid var(--glass-border-soft);
+  transition: border-color var(--dur) var(--ease);
 }
 
+.measure:hover { border-color: var(--glass-border); }
+
 .measure-label {
-  font-size: 0.68rem;
-  letter-spacing: 0.06em;
+  font-size: 0.67rem;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--text-3);
   margin-bottom: 5px;
@@ -442,26 +721,18 @@ select option { background: #1c222a; color: #fff; }
 
 .measure-value {
   font-family: var(--mono);
-  font-size: 1.18rem;
+  font-size: 1.2rem;
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
 
-.measure-note { font-size: 0.7rem; color: var(--text-3); margin-top: 4px; line-height: 1.35; }
+.measure-note { font-size: 0.7rem; color: var(--text-3); margin-top: 5px; line-height: 1.38; }
 .measure.client-wait .measure-value { color: var(--info); }
 .measure.ours .measure-value { color: var(--warn); }
 
-/* ---- Timeline --------------------------------------------------------- */
+.timeline { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
 
-.timeline { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 0; list-style: none; }
-
-.tl-row {
-  display: grid;
-  grid-template-columns: 12px 1fr;
-  gap: 12px;
-  padding-bottom: 15px;
-  position: relative;
-}
+.tl-row { display: grid; grid-template-columns: 12px 1fr; gap: 12px; padding-bottom: 15px; position: relative; }
 
 .tl-row:not(:last-child)::before {
   content: "";
@@ -470,17 +741,18 @@ select option { background: #1c222a; color: #fff; }
   top: 14px;
   bottom: 0;
   width: 1px;
-  background: var(--glass-border);
+  background: var(--glass-border-soft);
 }
 
 .dot {
   width: 11px;
   height: 11px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.32);
   border: 2px solid rgba(0, 0, 0, 0.35);
   margin-top: 3px;
   z-index: 1;
+  flex: none;
 }
 
 .dot.in_progress { background: var(--ok); }
@@ -489,55 +761,44 @@ select option { background: #1c222a; color: #fff; }
 .dot.in_verification { background: var(--warn); }
 .dot.done { background: var(--ok); }
 .dot.cancelled { background: var(--text-3); }
+.dot.new, .dot.queued { background: rgba(255, 255, 255, 0.32); }
 
 .tl-main { font-size: 0.85rem; line-height: 1.45; }
 .tl-when { font-family: var(--mono); font-size: 0.71rem; color: var(--text-3); }
 .tl-dur { font-family: var(--mono); font-size: 0.71rem; color: var(--text-2); }
 .tl-note { font-size: 0.79rem; color: var(--text-2); margin-top: 3px; font-style: italic; }
 
-.lag {
-  font-family: var(--mono);
-  font-size: 0.68rem;
-  color: var(--warn);
-  margin-left: 6px;
-}
+.lag { font-family: var(--mono); font-size: 0.68rem; color: var(--warn); margin-left: 6px; }
 
-.displaced {
-  margin-top: 4px;
-  font-size: 0.78rem;
-  color: var(--risk);
-}
-
+.displaced { margin-top: 4px; font-size: 0.78rem; color: var(--risk); }
 .displaced a { color: inherit; }
 
-/* ---- Forms in panels -------------------------------------------------- */
-
-.form-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+.form-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 11px; }
 .form-row select, .form-row input { flex: 1 1 130px; }
 
 .error {
-  margin-top: 10px;
-  padding: 10px 13px;
+  padding: 11px 14px;
   border-radius: var(--radius-sm);
-  background: rgba(232, 105, 125, 0.14);
-  border: 1px solid rgba(232, 105, 125, 0.4);
-  color: #ffd7dd;
-  font-size: 0.82rem;
+  background: rgba(240, 121, 140, 0.14);
+  border: 1px solid rgba(240, 121, 140, 0.42);
+  color: #ffd9df;
+  font-size: 0.83rem;
+  animation: rise-in 300ms var(--ease) both;
 }
 
-.back { color: var(--text-3); text-decoration: none; font-size: 0.8rem; }
+.back { color: var(--text-3); text-decoration: none; font-size: 0.8rem; transition: color var(--dur) var(--ease); }
 .back:hover { color: var(--text); }
 
 table.hist { width: 100%; border-collapse: collapse; font-size: 0.79rem; }
 table.hist th, table.hist td {
   text-align: left;
-  padding: 7px 8px;
-  border-bottom: 1px solid var(--glass-border);
+  padding: 8px;
+  border-bottom: 1px solid var(--glass-border-soft);
   color: var(--text-2);
 }
 table.hist th {
-  font-size: 0.67rem;
-  letter-spacing: 0.06em;
+  font-size: 0.66rem;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--text-3);
 }

@@ -167,6 +167,15 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
   reads from tokens. **ACCEPTED.**
 - D-018: Elapsed time anchors on the **first event's `occurred_at`**, never the
   row's `created_at`. Backdated items otherwise compute negative durations.
+- D-019: **Composer docked at the bottom**, not the top. Recording is the
+  behaviour every metric depends on, so it sits where the hands already are.
+- D-020: **Two views of one dataset** — Board (queue-shaped, for triage) and
+  Table (row-per-item with sortable columns, for scanning and comparison).
+  Same data, same composer; only the presentation differs.
+- D-021: **Glass values are extracted, not eyeballed.** The reference
+  tutorial's three inset shadows are used verbatim in geometry, with alpha
+  scaled per surface size — full strength on small cards washes out text.
+  Method and fidelity ledger in `docs/13-ui-extraction-prompt.md`.
 - D-013: **Optimistic locking** for concurrent edits to one work item.
   Notably *not* needed for concurrent assignment — nothing is reserved under
   ADR-001, so two assignments simply show as higher load, which is accurate.
@@ -191,6 +200,7 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 | `docs/adr/ADR-003` | Accepted — audit trail and item timeline |
 | `docs/adr/ADR-004` | Accepted — glass UI, swappable background |
 | `docs/pitch/manager-brief.html` | Ready to use — supports ASM-2 |
+| `docs/13-ui-extraction-prompt.md` | Reusable UI extraction prompt + applied spec |
 | `backend/` | **Feature 1 implemented — 33 tests passing** |
 
 ## KNOWN ISSUES / RISKS
@@ -228,8 +238,8 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 
 ## NEXT ACTION
 
-1. **Look at the running app**, and say whether the glass direction is right
-   before more screens are built on it.
+1. **Look at the board and table screenshots** and confirm the glass level is
+   right — it was tuned down once already, from washed-out to dark translucent.
 2. **Pitch it.** Still outstanding after four phases. ASM-2 remains the only
    assumption whose failure ends the project.
 3. Choose Feature 2 — recommended: **authentication and people management**,

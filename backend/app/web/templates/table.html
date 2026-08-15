@@ -1,0 +1,77 @@
+{% import "_shell.html" as shell %}
+{{ shell.head("Work Register — Table") }}
+
+{% macro col(key, label, sort, dir) %}
+  {# Clicking the active column flips direction; a new column starts ascending. #}
+  {% set next_dir = 'desc' if (sort == key and dir == 'asc') else 'asc' %}
+  <th>
+    <a href="/?view=table&sort={{ key }}&dir={{ next_dir }}">
+      {{ label }}
+      {% if sort == key %}<span class="sort">{{ '↑' if dir == 'asc' else '↓' }}</span>{% endif %}
+    </a>
+  </th>
+{% endmacro %}
+
+<div class="shell">
+  {{ shell.topbar(view) }}
+  {{ shell.loadstrip(loads) }}
+
+  <main class="table-wrap glass anim-rise" style="animation-delay:90ms">
+    <table class="grid">
+      <thead>
+        <tr>
+          {{ col('id', '#', sort, dir) }}
+          {{ col('title', 'Task', sort, dir) }}
+          {{ col('type', 'Type', sort, dir) }}
+          {{ col('client', 'Client', sort, dir) }}
+          {{ col('assignee', 'Assigned to', sort, dir) }}
+          {{ col('state', 'Status', sort, dir) }}
+          {{ col('priority', 'Priority', sort, dir) }}
+          {{ col('age', 'Age', sort, dir) }}
+          {{ col('moved', 'Last moved', sort, dir) }}
+          {{ col('due', 'Due', sort, dir) }}
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr style="animation-delay:{{ [loop.index0 * 22, 300] | min }}ms">
+          <td class="t-id">{{ r.id }}</td>
+          <td class="t-title"><a href="/items/{{ r.id }}">{{ r.title }}</a></td>
+          <td>{{ r.type_name or '—' }}</td>
+          <td>{{ r.client_name or '—' }}</td>
+          <td>
+            {% if r.assignee_name %}
+            <span class="assignee">
+              <span class="avatar" aria-hidden="true">{{ r.assignee_name[:1] | upper }}</span>{{ r.assignee_name }}
+            </span>
+            {% else %}
+            <span class="unowned">Unassigned</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="state-pill">
+              <span class="dot {{ r.state | lower }}"></span>{{ r.state_label }}
+            </span>
+          </td>
+          <td><span class="pri pri-{{ r.priority }}">P{{ r.priority }}</span></td>
+          <td class="t-num">{{ r.age | duration if r.age else '—' }}</td>
+          <td class="t-num">
+            {{ r.since_moved | duration if r.since_moved else '—' }}
+            {% if r.stale %}<span class="stale-flag" title="No movement for 3+ days">stalled</span>{% endif %}
+          </td>
+          <td class="t-num">
+            {% if r.due_date %}{{ r.due_date }}{% if r.overdue %}<span class="overdue-flag">overdue</span>{% endif %}
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10" class="empty">No open work. Record something below.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </main>
+</div>
+
+{{ shell.composer(people, types, view) }}
+</body>
+</html>

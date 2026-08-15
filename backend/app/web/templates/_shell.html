@@ -1,0 +1,79 @@
+{# Shared chrome for the two views of the same data.
+
+   The composer is docked at the bottom rather than the top. Recording is the
+   behaviour every metric in this product depends on (BR-002, D-005), so it sits
+   where the hands already are — always reachable, never behind a modal. #}
+
+{% macro head(title) %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title }}</title>
+  <link rel="stylesheet" href="/static/glass.css" />
+</head>
+<body>
+{% endmacro %}
+
+
+{% macro topbar(view) %}
+<header class="topbar glass anim-rise">
+  <h1 class="brand">Work Register <span>· all open work</span></h1>
+  <span class="spacer"></span>
+  <nav class="toggle" aria-label="View">
+    <a href="/?view=board" {% if view == 'board' %}aria-current="page"{% endif %}>Board</a>
+    <a href="/?view=table" {% if view == 'table' %}aria-current="page"{% endif %}>Table</a>
+  </nav>
+</header>
+{% endmacro %}
+
+
+{% macro loadstrip(loads) %}
+<section class="loads glass anim-rise" style="animation-delay:60ms" aria-label="Team load">
+  <span class="load-label">Load</span>
+  {% for l in loads %}
+  <span class="load-chip {% if l.is_overloaded %}over{% elif l.has_room %}room{% endif %} {% if l.absent_today %}away{% endif %}"
+        title="{{ l.explanation }}">
+    <span>{{ l.name }}</span>
+    <span class="load-bar" aria-hidden="true">
+      {% for i in range([l.normal_load, l.load] | max) %}
+      <span class="pip {% if i < l.load %}{% if i >= l.normal_load %}over{% else %}on{% endif %}{% endif %}"></span>
+      {% endfor %}
+    </span>
+    <span class="load-num">{{ l.load }}/{{ l.normal_load }}</span>
+    {% if l.absent_today %}<span title="Away today">away</span>{% endif %}
+  </span>
+  {% else %}
+  <span class="empty">No people yet.</span>
+  {% endfor %}
+</section>
+{% endmacro %}
+
+
+{% macro composer(people, types, view) %}
+<div class="composer-dock">
+  <div style="width:min(940px,100%)">
+    <form class="composer glass" method="post" action="/items">
+      <input type="hidden" name="view" value="{{ view }}" />
+      <input type="text" name="title" placeholder="What came in?"
+             autofocus required autocomplete="off" />
+      <select name="owner_id" aria-label="Assign to">
+        <option value="">Unassigned</option>
+        {% for p in people %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+      </select>
+      <select name="type_id" aria-label="Type">
+        <option value="">Type</option>
+        {% for t in types %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
+      </select>
+      <select name="priority" aria-label="Priority">
+        {% for p in [0,1,2,3,4] %}
+        <option value="{{ p }}" {% if p == 2 %}selected{% endif %}>P{{ p }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-primary composer-send" type="submit" aria-label="Record" title="Record">↑</button>
+    </form>
+    <p class="composer-hint">A title is all you need — everything else can be filled in later.</p>
+  </div>
+</div>
+{% endmacro %}
