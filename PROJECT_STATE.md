@@ -69,6 +69,9 @@ design, which is a direct translation of it.
 - K-027: **A QA verification step exists** and is part of the lifecycle. QA also
   receives work directly from clients (Q3.1), so QA is both a verifier and a
   potential owner.
+- K-028: **Assignment is centralized — one manager assigns.** Corrects the
+  original brief's "two managers assign simultaneously" edge case, which is
+  withdrawn. Raises C-007 against Q2.2 and the role matrix.
 
 ## ASSUMED (must be validated)
 
@@ -99,6 +102,11 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 - OPEN-4: starting default for "normal load" per person.
 - OPEN-5: does every item pass through verification; can it fail back?
 - OPEN-6: what decisions management makes weekly — needs a manager.
+- OPEN-7 / C-007: **who may assign work?** K-028 says one manager assigns; Q2.2
+  said developers pick an assignee when creating an item; the role matrix lets
+  Team Leads assign within team. Working assumption: anyone may take an unowned
+  item themselves, but only the manager assigns work *to someone else*.
+  Behavioural only — no structural impact. See domain model §13a.
 - ~~C-006~~ → **RESOLVED 2026-08-15.** "Record everything by EOD" means the work
   item, not the time spent. ADR-001 unaffected.
 
@@ -188,9 +196,8 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 
 ## NEXT ACTION
 
-1. **Review the domain model** — particularly §5 (lifecycle and clock behaviour)
-   and §11 (what is deliberately absent). Both encode decisions worth
-   disagreeing with if they don't match reality.
+1. **Resolve C-007 — who may assign work.** One sentence closes it. It is the
+   only open item with a working assumption currently standing in for an answer.
 2. **Pitch it.** Still outstanding. ASM-2 remains the only assumption whose
    failure ends the project, and the only one that costs 30 minutes to test.
 3. Answer OPEN-2, OPEN-3, OPEN-5 — none block the database design.

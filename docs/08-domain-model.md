@@ -475,23 +475,29 @@ worth doing at ~15 people; recorded so the option remains cheap.
 
 ## 10. Concurrency
 
-The original brief raised: *"Two managers attempt to assign the same developer
-simultaneously."*
+> **Correction, 2026-08-15.** The original brief listed *"two managers attempt to
+> assign the same developer simultaneously"* as an edge case. The stakeholder has
+> since confirmed this does not occur: **assignment is centralized — one manager
+> assigns** (K-028). The scenario is withdrawn. The analysis below is retained
+> because it explains why the scenario would not have been a problem regardless,
+> and because a genuine concurrency case remains.
 
-**Under this model, that is not a conflict at all** — and the reason is worth
-understanding, because it shows a good foundational decision removing downstream
-complexity.
+**Even had two managers been able to assign simultaneously, that would not be a
+conflict under this model** — and the reason is worth understanding, because it
+shows a good foundational decision removing downstream complexity.
 
 Hour-based capacity systems *reserve* capacity: assigning consumes a budget, so
 two simultaneous assignments can overdraw it, and you need locking to prevent
 double-booking. Under ADR-001 nothing is reserved. Load is **derived by counting**
-in-progress items. Two managers assigning two items to one person produces a
-person with two more items and a visible load increase. That is not an error — it
-is an accurate description of what just happened to them, and exactly what BR-008
+in-progress items. Two people assigning two items to one person produces a person
+with two more items and a visible load increase. That is not an error — it is an
+accurate description of what just happened to them, and exactly what BR-008
 should surface.
 
-**What does need protection** is two people editing the *same* work item at once —
-for instance both moving it to different states.
+**What still needs protection** is two people editing the *same* work item at
+once. With centralized assignment this is now the realistic case rather than the
+exotic one: the manager reassigns an item at the same moment its current owner
+moves it to another state.
 
 **Approach: optimistic locking.** Each WorkItem carries a `version`. A write
 includes the version it read; if the stored version has moved on, the write is
@@ -566,8 +572,41 @@ Every omission is a decision, not an oversight.
 | **OPEN-4** | Default starting value for `normal_load` | A seeded number. **Proposal: start at 3**, tune per person after four weeks of history |
 | **OPEN-5** | Does every item pass through verification? | Currently optional (`InProgress → Done` allowed). If mandatory for some types, becomes a per-type rule — additive |
 | **OPEN-6** | What managers decide weekly | May add services; unlikely to change entities |
+| **OPEN-7** | **Who may assign work?** K-028 says one manager assigns. Q2.2 said developers pick an assignee from a dropdown when creating an item. Both cannot be fully true — see C-007 | Behavioural (permission rule), not structural. The model supports either |
 
 None of these block the database design. All are additive or behavioural.
+
+---
+
+## 13a. Contradiction C-007 — who assigns work
+
+**Raised 2026-08-15, unresolved.**
+
+| Source | Says |
+|---|---|
+| K-028 (Q&A, 2026-08-15) | Assignment is centralized — **one manager assigns** |
+| K-012 / Q2.2 (Round 2) | Developers create the item and **select the assignee from a dropdown**, with multiple people selectable |
+| BRD §3.3 role matrix | Team Lead assigns within team; Manager assigns across teams |
+| K-015 (Round 2) | The **Team Lead** is who notices stalled work today |
+
+These cannot all hold. Three readings are plausible:
+
+1. **Strictly centralized** — only the manager ever sets an owner. Developers
+   record work but leave it unassigned. Simple, but makes the manager a
+   bottleneck: if they are absent, nothing gets assigned, and F-004 (absence
+   stalls work) reappears one level up, applied to the assigner.
+2. **Centralized for *others*, open for *self*** — anyone may take an unowned
+   item themselves; only the manager assigns work *to someone else*. This
+   reconciles K-028 with Q2.2 and is the most likely intent.
+3. **Manager assigns, Team Lead reassigns within team** — matches K-015, and
+   keeps the ability to react when someone is absent.
+
+**Working assumption until resolved: reading 2**, because it contradicts neither
+source outright and keeps the manager off the critical path for every single item.
+
+**No structural impact.** Assignment is an operation guarded by a permission
+check, not a shape in the model. Whichever reading wins changes one rule in the
+`access` module and one row in the role matrix — no tables, no entities.
 
 ---
 
@@ -576,3 +615,4 @@ None of these block the database design. All are additive or behavioural.
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-08-15 | Initial model from BRD v1.0, ADR-001, ADR-002 |
+| 1.1 | 2026-08-15 | K-028: assignment is centralized, one manager assigns. Two-manager concurrency scenario withdrawn from §10. Contradiction C-007 raised (§13a) with a working assumption; no structural impact |
