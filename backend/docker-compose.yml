@@ -1,0 +1,20 @@
+# Local development only. One service: the database.
+# The app runs on the host with `uvicorn app.api:app --reload`.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: rp
+      POSTGRES_PASSWORD: rp
+      POSTGRES_DB: resource_planning
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rp -d resource_planning"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  pgdata:

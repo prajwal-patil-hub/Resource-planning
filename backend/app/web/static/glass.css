@@ -1,0 +1,544 @@
+/* ==========================================================================
+   Glass design system — ADR-004
+
+   The background is ONE property. Change --app-background and the whole
+   interface re-seats over it. Nothing below ever references the background
+   directly.
+   ========================================================================== */
+
+:root {
+  /* ---- THE ONE THING TO CHANGE LATER ----------------------------------
+     Replace with url(...), a gradient, or a solid colour.
+     Everything else adapts.                                              */
+  --app-background:
+    radial-gradient(120% 90% at 12% 8%, #4a5b6e 0%, transparent 55%),
+    radial-gradient(110% 80% at 88% 12%, #3d4a5c 0%, transparent 50%),
+    linear-gradient(168deg, #2b3440 0%, #1a2028 48%, #12161c 100%);
+  --app-background-size: cover;
+  /* Opaque base behind the background layer. Anything the gradient or image
+     does not cover falls back to this rather than to the browser's white. */
+  --app-background-base: #12161c;
+  /* ------------------------------------------------------------------- */
+
+  /* Glass recipe. The three inner shadows come straight from the reference
+     tutorial: light from above, opposing bevel below, soft frost spread. */
+  --glass-bg: rgba(28, 34, 42, 0.52);
+  --glass-bg-raised: rgba(38, 45, 55, 0.62);
+  --glass-bg-strong: rgba(22, 27, 34, 0.78);
+  --glass-blur: 22px;
+  --glass-saturate: 1.35;
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-border-strong: rgba(255, 255, 255, 0.22);
+
+  --glass-inner-top: inset 0 1px 0 rgba(255, 255, 255, 0.20);
+  --glass-inner-bottom: inset 0 -1px 0 rgba(0, 0, 0, 0.28);
+  --glass-inner-glow: inset 0 0 15px 2px rgba(255, 255, 255, 0.05);
+  --glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.28), 0 18px 40px -16px rgba(0, 0, 0, 0.55);
+
+  /* Text. Minimum opacity on surfaces guarantees these stay legible
+     whatever background is eventually chosen (ADR-004 rule 1). */
+  --text: rgba(255, 255, 255, 0.95);
+  --text-2: rgba(255, 255, 255, 0.70);
+  --text-3: rgba(255, 255, 255, 0.48);
+
+  /* Semantic colour is meaning, not decoration. Deliberately separate from
+     the glass palette so it reads against any background (ADR-004 rule 3). */
+  --ok: #5fd3a0;
+  --warn: #efb457;
+  --risk: #f08b64;
+  --stop: #e8697d;
+  --info: #74b3e8;
+
+  --radius: 14px;
+  --radius-sm: 9px;
+
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html {
+  min-height: 100%;
+  background: var(--app-background-base);
+}
+
+body {
+  margin: 0;
+  font-family: var(--sans);
+  color: var(--text);
+  background: var(--app-background);
+  background-size: var(--app-background-size);
+  background-color: var(--app-background-base);
+  background-attachment: fixed;
+  background-position: center;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+}
+
+/* ---- The glass surface ------------------------------------------------ */
+
+.glass {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: var(--glass-inner-top), var(--glass-inner-bottom),
+              var(--glass-inner-glow), var(--glass-shadow);
+}
+
+.glass-raised {
+  background: var(--glass-bg-raised);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.7)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(calc(var(--glass-blur) * 0.7)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--glass-inner-top), var(--glass-inner-bottom),
+              0 2px 10px -4px rgba(0, 0, 0, 0.5);
+}
+
+/* Where backdrop-filter is unsupported, fall back to a solid tint at the same
+   contrast. The design loses beauty and keeps every bit of its information. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass { background: rgba(24, 29, 36, 0.94); }
+  .glass-raised { background: rgba(36, 43, 52, 0.96); }
+}
+
+/* ADR-004: blur is decoration, never information. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .glass-raised {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: #1a2029;
+  }
+  .glass-raised { background: #242b34; }
+}
+
+/* ---- Layout ----------------------------------------------------------- */
+
+.shell {
+  min-height: 100dvh;
+  padding: clamp(14px, 2.4vw, 26px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 13px 18px;
+  flex-wrap: wrap;
+}
+
+.brand {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.brand span { color: var(--text-3); font-weight: 400; }
+
+/* ---- Quick add: the most important control in the product -------------
+   BR-002 / D-005. Title is the only required field. Everything else is an
+   optional adornment sitting to its right, so the fast path is: type, Enter. */
+
+.quick-add {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex: 1 1 460px;
+  min-width: 260px;
+}
+
+.quick-add input[type="text"] {
+  flex: 1 1 auto;
+  min-width: 140px;
+}
+
+input[type="text"], select, textarea {
+  font-family: var(--sans);
+  font-size: 0.88rem;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.26);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  outline: none;
+}
+
+input[type="text"]::placeholder { color: var(--text-3); }
+
+input[type="text"]:focus, select:focus, textarea:focus {
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
+}
+
+select { cursor: pointer; }
+select option { background: #1c222a; color: #fff; }
+
+.btn {
+  font-family: var(--sans);
+  font-size: 0.86rem;
+  font-weight: 550;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--glass-border-strong);
+  border-radius: var(--radius-sm);
+  padding: 9px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: var(--glass-inner-top);
+}
+
+.btn:hover { background: rgba(255, 255, 255, 0.19); }
+.btn:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.6); outline-offset: 2px; }
+.btn-primary { background: rgba(255, 255, 255, 0.9); color: #161b21; border-color: transparent; }
+.btn-primary:hover { background: #fff; }
+.btn-sm { padding: 6px 11px; font-size: 0.78rem; }
+
+/* ---- Board ------------------------------------------------------------ */
+
+.board {
+  display: flex;
+  gap: 13px;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  flex: 1;
+}
+
+.column {
+  flex: 0 0 268px;
+  padding: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: calc(100dvh - 190px);
+}
+
+.column-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.column-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin: 0;
+}
+
+.count {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-3);
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 20px;
+  padding: 2px 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.cards { display: flex; flex-direction: column; gap: 9px; overflow-y: auto; }
+
+.card {
+  display: block;
+  padding: 12px;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.card:hover { transform: translateY(-1px); border-color: var(--glass-border-strong); }
+.card:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.6); outline-offset: 2px; }
+
+.card-title {
+  font-size: 0.89rem;
+  line-height: 1.35;
+  margin: 0 0 8px;
+  color: var(--text);
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  font-size: 0.73rem;
+  color: var(--text-3);
+}
+
+.owner {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-2);
+}
+
+.avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  display: grid;
+  place-items: center;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.unowned { color: var(--risk); }
+
+/* Priority reads as shape + colour, never colour alone. */
+.pri {
+  font-family: var(--mono);
+  font-size: 0.67rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+  letter-spacing: 0.02em;
+}
+
+.pri-0 { color: var(--stop); }
+.pri-1 { color: var(--risk); }
+.pri-2 { color: var(--text-3); }
+.pri-3, .pri-4 { color: var(--text-3); opacity: 0.75; }
+
+.stale {
+  color: var(--warn);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+}
+
+.empty {
+  font-size: 0.78rem;
+  color: var(--text-3);
+  padding: 10px 2px;
+  font-style: italic;
+}
+
+/* ---- Load strip ------------------------------------------------------- */
+
+.loads {
+  display: flex;
+  gap: 9px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  align-items: center;
+}
+
+.load-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  white-space: nowrap;
+  margin-right: 4px;
+}
+
+.load-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 11px;
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.26);
+  border: 1px solid var(--glass-border);
+  white-space: nowrap;
+  font-size: 0.78rem;
+}
+
+.load-chip.over { border-color: var(--risk); color: var(--risk); }
+.load-chip.room { border-color: rgba(95, 211, 160, 0.5); }
+.load-chip.away { opacity: 0.55; }
+
+.load-bar {
+  display: flex;
+  gap: 2px;
+}
+
+.pip {
+  width: 5px;
+  height: 12px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.pip.on { background: var(--ok); }
+.pip.over { background: var(--risk); }
+
+/* ---- Detail page ------------------------------------------------------ */
+
+.detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+@media (max-width: 900px) { .detail { grid-template-columns: 1fr; } }
+
+.panel { padding: 18px; }
+
+.panel h2 {
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin: 0 0 14px;
+}
+
+.item-title {
+  font-size: 1.3rem;
+  line-height: 1.25;
+  margin: 0 0 10px;
+  text-wrap: balance;
+}
+
+.chip-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
+
+.chip {
+  font-size: 0.74rem;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--glass-border);
+  color: var(--text-2);
+}
+
+.chip-state { color: var(--text); border-color: var(--glass-border-strong); }
+
+/* Measures. Every one is derived (ADR-001), so each carries its own note. */
+.measures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 10px;
+}
+
+.measure {
+  padding: 11px 13px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.24);
+  border: 1px solid var(--glass-border);
+}
+
+.measure-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 5px;
+}
+
+.measure-value {
+  font-family: var(--mono);
+  font-size: 1.18rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.measure-note { font-size: 0.7rem; color: var(--text-3); margin-top: 4px; line-height: 1.35; }
+.measure.client-wait .measure-value { color: var(--info); }
+.measure.ours .measure-value { color: var(--warn); }
+
+/* ---- Timeline --------------------------------------------------------- */
+
+.timeline { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 0; list-style: none; }
+
+.tl-row {
+  display: grid;
+  grid-template-columns: 12px 1fr;
+  gap: 12px;
+  padding-bottom: 15px;
+  position: relative;
+}
+
+.tl-row:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 14px;
+  bottom: 0;
+  width: 1px;
+  background: var(--glass-border);
+}
+
+.dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(0, 0, 0, 0.35);
+  margin-top: 3px;
+  z-index: 1;
+}
+
+.dot.in_progress { background: var(--ok); }
+.dot.on_hold_preempted { background: var(--risk); }
+.dot.blocked_on_client { background: var(--info); }
+.dot.in_verification { background: var(--warn); }
+.dot.done { background: var(--ok); }
+.dot.cancelled { background: var(--text-3); }
+
+.tl-main { font-size: 0.85rem; line-height: 1.45; }
+.tl-when { font-family: var(--mono); font-size: 0.71rem; color: var(--text-3); }
+.tl-dur { font-family: var(--mono); font-size: 0.71rem; color: var(--text-2); }
+.tl-note { font-size: 0.79rem; color: var(--text-2); margin-top: 3px; font-style: italic; }
+
+.lag {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--warn);
+  margin-left: 6px;
+}
+
+.displaced {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: var(--risk);
+}
+
+.displaced a { color: inherit; }
+
+/* ---- Forms in panels -------------------------------------------------- */
+
+.form-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+.form-row select, .form-row input { flex: 1 1 130px; }
+
+.error {
+  margin-top: 10px;
+  padding: 10px 13px;
+  border-radius: var(--radius-sm);
+  background: rgba(232, 105, 125, 0.14);
+  border: 1px solid rgba(232, 105, 125, 0.4);
+  color: #ffd7dd;
+  font-size: 0.82rem;
+}
+
+.back { color: var(--text-3); text-decoration: none; font-size: 0.8rem; }
+.back:hover { color: var(--text); }
+
+table.hist { width: 100%; border-collapse: collapse; font-size: 0.79rem; }
+table.hist th, table.hist td {
+  text-align: left;
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--glass-border);
+  color: var(--text-2);
+}
+table.hist th {
+  font-size: 0.67rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+table.hist td:first-child { color: var(--text); }

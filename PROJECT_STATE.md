@@ -10,14 +10,15 @@
 
 ## CURRENT PHASE
 
-**Phase 3 — Database Design.** Discovery complete; BRD, domain model and
-database design all drafted. **Still no coding — implementation not yet
-approved.**
+**Phase 4 — Implementation.** Feature 1 built and running.
 
 ## CURRENT OBJECTIVE
 
-Review the database design (`docs/11-database-design.md`), then decide whether to
-approve implementation. Everything after this point writes code.
+Review Feature 1 (record a work item + audit trail + time-in-state report).
+Then choose Feature 2.
+
+**Status:** 33 tests passing against real PostgreSQL 16. App runs, board and
+item timeline verified by screenshot.
 
 ---
 
@@ -75,6 +76,8 @@ approve implementation. Everything after this point writes code.
 - K-029: **Anyone recording work may assign it** (C-007, resolved). Assignment is
   not reserved to the manager. Uncoordinated assignment is mitigated by
   visibility and attribution, not by permission.
+- K-030: **Exactly one accountable owner per item, always.** Others working on
+  it are collaborators, working under the owner (stakeholder, 2026-08-15).
 
 ## ASSUMED (must be validated)
 
@@ -156,6 +159,14 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 - D-015: **Fixed lists are CHECK constraints; extensible lists are tables.**
   States are fixed (adding one changes behaviour); work types are extensible
   (adding one changes only data).
+- D-016: **ADR-003 — the audit trail is the product, not a byproduct.** Three
+  layers: state history, field history (captured by trigger so no code path can
+  miss it), ownership history. **ACCEPTED.**
+- D-017: **ADR-004 — frosted glass over a swappable background.** One CSS
+  custom property (`--app-background`) controls the background; everything else
+  reads from tokens. **ACCEPTED.**
+- D-018: Elapsed time anchors on the **first event's `occurred_at`**, never the
+  row's `created_at`. Backdated items otherwise compute negative durations.
 - D-013: **Optimistic locking** for concurrent edits to one work item.
   Notably *not* needed for concurrent assignment — nothing is reserved under
   ADR-001, so two assignments simply show as higher load, which is accurate.
@@ -177,7 +188,10 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 | `docs/03-brd.md` | v1.0 draft — for review |
 | `docs/08-domain-model.md` | v1.2 draft — for review |
 | `docs/11-database-design.md` | **v1.0 draft — for review** |
+| `docs/adr/ADR-003` | Accepted — audit trail and item timeline |
+| `docs/adr/ADR-004` | Accepted — glass UI, swappable background |
 | `docs/pitch/manager-brief.html` | Ready to use — supports ASM-2 |
+| `backend/` | **Feature 1 implemented — 33 tests passing** |
 
 ## KNOWN ISSUES / RISKS
 
@@ -204,12 +218,19 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 
 ---
 
+## KNOWN GAPS IN THE BUILD
+
+- **No authentication.** `X-Actor-Id` header stands in for the signed-in user so
+  Feature 1 could be a complete vertical slice without pulling identity into it.
+  Must exist before real use.
+- **Permissions not enforced.** ADR-002 defines the model; `access` is a stub.
+- Background image not chosen — one CSS property, deliberately deferred.
+
 ## NEXT ACTION
 
-1. **Decide whether to approve implementation.** Design is complete enough to
-   build Feature 1. Per working agreement 12, no code is written until this is
-   explicitly approved.
-2. **Pitch it.** Still outstanding after three phases. ASM-2 remains the only
-   assumption whose failure ends the project, and the only one testable in 30
-   minutes.
-3. Answer OPEN-2, OPEN-3, OPEN-5 — none block implementation.
+1. **Look at the running app**, and say whether the glass direction is right
+   before more screens are built on it.
+2. **Pitch it.** Still outstanding after four phases. ASM-2 remains the only
+   assumption whose failure ends the project.
+3. Choose Feature 2 — recommended: **authentication and people management**,
+   because every record currently claims to be created by person #1.

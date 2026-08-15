@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Work Register</title>
+  <link rel="stylesheet" href="/static/glass.css" />
+</head>
+<body>
+<div class="shell">
+
+  {# The quick-add sits in the top bar, not behind a button or a modal.
+     BR-002 / D-005: recording must be faster than telling a colleague, so the
+     fast path is type-a-title-and-press-Enter. Everything else is optional and
+     placed after the title so it can be skipped without thinking about it. #}
+  <header class="topbar glass">
+    <h1 class="brand">Work Register <span>· all open work</span></h1>
+    <form class="quick-add" method="post" action="/items">
+      <input type="text" name="title" placeholder="What came in? Type it and press Enter…"
+             autofocus required autocomplete="off" />
+      <select name="owner_id" aria-label="Owner">
+        <option value="">Unassigned</option>
+        {% for p in people %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+      </select>
+      <select name="type_id" aria-label="Type">
+        <option value="">Type</option>
+        {% for t in types %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
+      </select>
+      <select name="priority" aria-label="Priority">
+        {% for p in [0,1,2,3,4] %}
+        <option value="{{ p }}" {% if p == 2 %}selected{% endif %}>P{{ p }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-primary" type="submit">Record</button>
+    </form>
+  </header>
+
+  {# Load strip. Items, not hours (ADR-001). Overload is relative to each
+     person's own normal level (RULE-007), so the pips show load against their
+     own line rather than a company-wide threshold. #}
+  <section class="loads glass" aria-label="Team load">
+    <span class="load-label">Load</span>
+    {% for l in loads %}
+    <span class="load-chip {% if l.is_overloaded %}over{% elif l.has_room %}room{% endif %} {% if l.absent_today %}away{% endif %}"
+          title="{{ l.explanation }}">
+      <span>{{ l.name }}</span>
+      <span class="load-bar" aria-hidden="true">
+        {% for i in range([l.normal_load, l.load] | max) %}
+        <span class="pip {% if i < l.load %}{% if i >= l.normal_load %}over{% else %}on{% endif %}{% endif %}"></span>
+        {% endfor %}
+      </span>
+      <span style="font-family:var(--mono);font-size:.72rem">{{ l.load }}/{{ l.normal_load }}</span>
+      {% if l.absent_today %}<span title="Away today">away</span>{% endif %}
+    </span>
+    {% else %}
+    <span class="empty">No people yet.</span>
+    {% endfor %}
+  </section>
+
+  <main class="board">
+    {% for state, label, entries in columns %}
+    <section class="column glass">
+      <div class="column-head">
+        <h2 class="column-title">{{ label }}</h2>
+        <span class="count">{{ entries | length }}</span>
+      </div>
+      <div class="cards">
+        {% for e in entries %}
+        <a class="card glass-raised" href="/items/{{ e.item.id }}">
+          <p class="card-title">{{ e.item.title }}</p>
+          <div class="card-meta">
+            <span class="pri pri-{{ e.item.priority }}">P{{ e.item.priority }}</span>
+            {% if e.owner %}
+            <span class="owner">
+              <span class="avatar" aria-hidden="true">{{ e.owner[:1] | upper }}</span>{{ e.owner }}
+            </span>
+            {% else %}
+            <span class="unowned">Nobody owns this</span>
+            {% endif %}
+            {% if e.type %}<span>{{ e.type }}</span>{% endif %}
+            {% if e.client %}<span>· {{ e.client }}</span>{% endif %}
+          </div>
+        </a>
+        {% else %}
+        <p class="empty">Nothing here.</p>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  </main>
+
+</div>
+</body>
+</html>

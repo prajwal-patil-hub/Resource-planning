@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ item.title }}</title>
+  <link rel="stylesheet" href="/static/glass.css" />
+</head>
+<body>
+<div class="shell">
+
+  <header class="topbar glass">
+    <a class="back" href="/">← All work</a>
+    <h1 class="brand">Item #{{ item.id }}</h1>
+  </header>
+
+  {% if request.query_params.get('error') %}
+  <div class="error">{{ request.query_params.get('error') }}</div>
+  {% endif %}
+
+  <div class="detail">
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+
+      <section class="panel glass">
+        <h1 class="item-title">{{ item.title }}</h1>
+        <div class="chip-row">
+          <span class="chip chip-state">{{ item.state | state_label }}</span>
+          <span class="pri pri-{{ item.priority }}">P{{ item.priority }}</span>
+          {% if item.type %}<span class="chip">{{ item.type.name }}</span>{% endif %}
+          {% if item.client %}<span class="chip">{{ item.client.name }}</span>{% endif %}
+          {% if owner %}
+          <span class="chip">Owner: {{ owner.person.name }}</span>
+          {% else %}
+          <span class="chip" style="color:var(--risk)">Nobody owns this</span>
+          {% endif %}
+          {% if item.due_date %}<span class="chip">Due {{ item.due_date }}</span>{% endif %}
+        </div>
+        {% if item.description %}<p style="color:var(--text-2);font-size:.9rem">{{ item.description }}</p>{% endif %}
+
+        {# Only transitions the lifecycle permits are offered. An illegal move is
+           not presented and then rejected — it is never presented. #}
+        {% if allowed %}
+        <form class="form-row" method="post" action="/items/{{ item.id }}/transition">
+          <select name="to_state" required aria-label="Move to">
+            {% for s in allowed %}<option value="{{ s.value }}">{{ labels[s] }}</option>{% endfor %}
+          </select>
+          <select name="displaced_by_id" aria-label="Displaced by">
+            <option value="">Displaced by… (required when putting on hold)</option>
+            {% for o in open_items %}<option value="{{ o.id }}">#{{ o.id }} {{ o.title[:46] }}</option>{% endfor %}
+          </select>
+          <input type="text" name="note" placeholder="Note (optional)" />
+          <button class="btn" type="submit">Move</button>
+        </form>
+        {% else %}
+        <p style="color:var(--text-3);font-size:.82rem;margin-top:10px">
+          This item is {{ item.state | state_label | lower }} — a closed item is never reopened.
+          If the client comes back on it, record a new item instead so the history of each stays clean.
+        </p>
+        {% endif %}
+
+        {% if allowed %}
+        <form class="form-row" method="post" action="/items/{{ item.id }}/assign">
+          <select name="person_id" required aria-label="Assign to">
+            {% for p in people %}
+            <option value="{{ p.id }}" {% if owner and owner.person_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-sm" type="submit">Assign</button>
+        </form>
+        {% endif %}
+      </section>
+
+      {# ADR-003: where the time went. Every figure is derived from the event
+         log, and each carries the note explaining what it means — BR-020. #}
+      <section class="panel glass">
+        <h2>Where the time went</h2>
+        <div class="measures">
+          <div class="measure">
+            <div class="measure-label">Total elapsed</div>
+            <div class="measure-value">{{ tl.total_elapsed | duration }}</div>
+            <div class="measure-note">Recorded → now. What the client experiences.</div>
+          </div>
+          <div class="measure ours">
+            <div class="measure-label">Ours to answer for</div>
+            <div class="measure-value">{{ tl.accountable_elapsed | duration }}</div>
+            <div class="measure-note">Total minus time waiting on the client.</div>
+          </div>
+          <div class="measure">
+            <div class="measure-label">Actively worked</div>
+            <div class="measure-value">{{ tl.active_time | duration }}</div>
+            <div class="measure-note">Time in progress. Closest honest proxy for effort.</div>
+          </div>
+          <div class="measure client-wait">
+            <div class="measure-label">Waiting on client</div>
+            <div class="measure-value">{{ tl.waiting_on_client | duration }}</div>
+            <div class="measure-note">Clock stopped — not counted against us.</div>
+          </div>
+          <div class="measure">
+            <div class="measure-label">Waiting on us</div>
+            <div class="measure-value">{{ tl.waiting_on_us | duration }}</div>
+            <div class="measure-note">Unassigned, queued, or set aside.</div>
+          </div>
+          <div class="measure">
+            <div class="measure-label">In verification</div>
+            <div class="measure-value">{{ tl.verification_time | duration }}</div>
+            <div class="measure-note">QA queue time, otherwise invisible.</div>
+          </div>
+          <div class="measure">
+            <div class="measure-label">Time to first touch</div>
+            <div class="measure-value">
+              {% if tl.time_to_first_touch is not none %}{{ tl.time_to_first_touch | duration }}{% else %}—{% endif %}
+            </div>
+            <div class="measure-note">Recorded → someone started. Not asked for; free from the same data.</div>
+          </div>
+          <div class="measure">
+            <div class="measure-label">Set aside</div>
+            <div class="measure-value">{{ tl.preemption_count }}×</div>
+            <div class="measure-note">Times displaced by more urgent work.</div>
+          </div>
+          <div class="measure">
+            <div class="measure-label">Sent back by QA</div>
+            <div class="measure-value">{{ tl.rework_count }}×</div>
+            <div class="measure-note">Verification failures. A quality signal that costs nothing.</div>
+          </div>
+          <div class="measure">
+            <div class="measure-label">Worst recording lag</div>
+            <div class="measure-value">{{ tl.max_recording_lag | duration }}</div>
+            <div class="measure-note">Gap between happening and being typed. Confidence qualifier on everything here.</div>
+          </div>
+        </div>
+      </section>
+
+      {% if tl.displacements %}
+      {# BO-4: the evidence for lateness. This is the answer to
+         "why isn't this done yet". #}
+      <section class="panel glass">
+        <h2>What pushed this aside</h2>
+        {% for d in tl.displacements %}
+        <p class="displaced">
+          {{ d.occurred_at.strftime('%d %b, %H:%M') }} — set aside for
+          <a href="/items/{{ d.displaced_by_id }}">#{{ d.displaced_by_id }} {{ d.displaced_by_title }}</a>
+          <span style="color:var(--text-3)">by {{ d.by_person }}</span>
+        </p>
+        {% endfor %}
+      </section>
+      {% endif %}
+
+      <section class="panel glass">
+        <h2>Who worked on it</h2>
+        <table class="hist">
+          <thead><tr><th>Person</th><th>From</th><th>For</th><th>Assigned by</th></tr></thead>
+          <tbody>
+          {% for o in tl.owners %}
+          <tr>
+            <td>{{ o.person_name }}</td>
+            <td>{{ o.from_ts.strftime('%d %b %H:%M') }}</td>
+            <td>{{ o.duration | duration }}</td>
+            <td>{{ o.assigned_by }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="empty">Never assigned.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      {% if tl.field_changes %}
+      <section class="panel glass">
+        <h2>Field changes</h2>
+        <table class="hist">
+          <thead><tr><th>Field</th><th>From</th><th>To</th><th>When</th></tr></thead>
+          <tbody>
+          {% for c in tl.field_changes %}
+          <tr>
+            <td>{{ c.field }}</td>
+            <td>{{ c.old_value or '—' }}</td>
+            <td>{{ c.new_value or '—' }}</td>
+            <td>{{ c.occurred_at.strftime('%d %b %H:%M') }}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </section>
+      {% endif %}
+
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+
+      <section class="panel glass">
+        <h2>History</h2>
+        <ul class="timeline">
+          {% for span in tl.spans %}
+          <li class="tl-row">
+            <span class="dot {{ span.state.value | lower }}"></span>
+            <div class="tl-main">
+              <strong>{{ span.state | state_label }}</strong>
+              <span class="tl-dur">· {{ span.duration | duration }}{% if span.is_open %} so far{% endif %}</span>
+              <div class="tl-when">{{ span.entered_at.strftime('%d %b %Y, %H:%M') }}</div>
+              {% set t = tl.transitions[loop.index0] %}
+              {% if t %}
+                <div class="tl-when">by {{ t.changed_by.name }}
+                  {% if (t.recorded_at - t.occurred_at).total_seconds() > 900 %}
+                  <span class="lag">recorded {{ (t.recorded_at - t.occurred_at) | duration }} later</span>
+                  {% endif %}
+                </div>
+                {% if t.note %}<div class="tl-note">“{{ t.note }}”</div>{% endif %}
+              {% endif %}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+      </section>
+
+    </div>
+  </div>
+</div>
+</body>
+</html>
