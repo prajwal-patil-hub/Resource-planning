@@ -111,27 +111,152 @@ whether the mechanism is working before the outcome has had time to change.
 months to shift. "% of work items with a recorded owner" moves within a week and
 tells us early whether the system is being adopted at all.
 
+### Architecture Decision Record (ADR)
+**What:** A short document capturing one significant decision — the situation
+that forced it, the options, the choice, and what the choice costs. One decision
+per file, numbered, never deleted; a reversal gets a new ADR that supersedes the
+old one, and the old one stays readable.
+**Why it exists:** The reasoning behind a decision evaporates within weeks while
+the consequences last for years. Without a record, the answer to "why is it built
+this way?" becomes "nobody remembers", and teams re-litigate settled questions or
+undo decisions without knowing what they were for.
+**Why it matters here:** ADR-001 records why this system does not track hours.
+That will look like an oversight to anyone who arrives later, and the file is
+what stops someone helpfully adding hour tracking back in and rediscovering, over
+several months, why it didn't work.
+
+### Cycle Time
+**What:** Elapsed time from starting a piece of work to finishing it — wall clock,
+including every interruption, pause and wait.
+**Why it exists:** It's what you can actually measure without asking anyone
+anything, since it's just the gap between two timestamps.
+**Why it matters here:** It is not effort — an item "in progress" for three days
+might be two hours of typing. But for predicting *when things will be done*,
+cycle time is the better number precisely because it includes the interruptions
+and waiting that really happen. Effort estimates fail mostly because they exclude
+exactly those things, and in this organization interruptions are the dominant
+cause of delay (K-016).
+
+### Throughput
+**What:** How many items get completed per unit of time — "we finish about nine
+things a week."
+**Why it exists:** It's the simplest possible measure of how fast a team actually
+delivers, and needs no estimation.
+**Why it matters here:** With throughput and a count of remaining work you can
+forecast a completion range without a single estimate: 40 items left, ~9 a week,
+so roughly 4–6 weeks. Cruder than a plan, and usually more accurate.
+
+### Work in Progress (WIP)
+**What:** The number of items a person or team has actively started but not
+finished.
+**Why it exists:** Starting more things doesn't finish more things. Past a
+certain point extra concurrent work slows everything down — context switching
+costs, and every started-but-unfinished item is value sitting idle.
+**Why it matters here:** This is our replacement for hour-based capacity.
+"Overloaded" becomes "carrying more items in progress than they normally
+sustain", which needs only counting — no effort data, no estimates.
+
+### Preemption
+**What:** Urgent work displacing work already in progress.
+**Why it exists as a named concept:** It's usually invisible. The displaced work
+just quietly stops, and later looks like someone was slow.
+**Why it matters here:** Q3.1 describes it directly — an urgent item arrives, and
+the current task is put on hold or transferred. It is the mechanism behind this
+organization's delays. Recording *which item displaced which* turns "why is this
+late?" from an argument into a fact, including with clients.
+
+### Reference Data (vs. a fixed enum)
+**What:** Values stored as rows in a table (work types, roles, priorities) rather
+than fixed in code.
+**Why it exists:** Some lists are genuinely stable (a boolean is true or false)
+and some grow with the business. Putting a growing list in code means a developer
+and a deployment every time it grows.
+**Why it matters here:** Work types must be user-extensible (K-014) and roles
+should be addable (ADR-002), so both are reference data. Note the important
+subtlety: making the *list* extensible is cheap; making the *behaviour attached
+to each entry* configurable is expensive. ADR-002 grants the first and defers the
+second.
+
+### Configurability as deferred decision-making
+**What:** Building a setting instead of making a choice.
+**Why it exists:** Genuine uncertainty, or many customers who each need different
+behaviour.
+**Why it matters here:** It costs roughly 3–5× a fixed rule — the rule, plus
+storage, plus an editing UI, plus validation, plus testing every combination —
+and someone must configure it before anyone can use anything. With one
+organization of ~15 people (K-025) there is no second customer to be flexible
+for, and the setup burden lands on the manager whose buy-in the project depends
+on (Q2.8). See ADR-002.
+
 ---
 
-## Domain terms (to be defined together — currently ambiguous)
+## Domain terms — now defined
 
-These are deliberately left undefined. Defining them precisely *is* a large part
-of the business analysis work, and each definition has direct consequences for
-the database and algorithms.
+These were deliberately left open at the start of discovery. ADR-001 settles most
+of them, because the choice of substrate (flow data rather than typed effort)
+determines what each can mean. Definitions are **PROPOSED** until ADR-001 is
+confirmed.
 
-- **Capacity** — how much work a person can absorb in a period. Gross or net of
-  meetings, support, and overhead? Measured in hours, points, or task slots?
-- **Availability** — a point-in-time or forward-looking property? Does "available
-  Tuesday" mean zero assigned work, or below a utilization threshold?
-- **Allocation** — a commitment of a person's capacity to a project or task.
-  Percentage-based or hours-based? Per day or per period?
-- **Utilization** — assigned work ÷ capacity. Which capacity — gross or net?
-  Is 100% the target, or is it a red flag?
-- **Overlap / Conflict** — two claims on the same person at the same time. Is it
-  an error, a warning, or a normal state to be visualized?
-- **ETA** — expected completion date. Derived from effort + availability +
-  dependencies, or manually stated by the assignee?
-- **Best developer** — best by skill, speed, availability, cost, project
-  familiarity, growth, or fairness? These frequently recommend different people.
+### Capacity
+**Definition:** the number of items a person can hold in progress at once while
+still finishing things at their normal rate. Measured in **items, not hours**.
+**Why not hours:** hour-based capacity requires effort data that will not be
+entered (K-019). See ADR-001.
+**Starting rule:** to be seeded with a default (open item O-004) and then tuned
+per person from their own observed history.
 
-_Do not use any of these terms in a requirement until it is defined above._
+### Load
+**Definition:** how many items a person currently has in progress.
+**Note:** an item counts against its **owner**. Collaborators are recorded and
+visible but do not consume their own load in v1 — revisit if it distorts the
+picture.
+
+### Overloaded / Under-utilized
+**Definition:** load above (or below) that person's normal sustained level.
+Relative to the individual, not to a company-wide number, because people
+genuinely differ and a single threshold would be wrong for most of them.
+
+### Available
+**Definition:** load is below their normal level, they are not on leave, and it
+is a working day.
+**Note:** availability is a *statement about now*, deliberately not a prediction.
+"When will they be free" is a separate, probabilistic question.
+
+### ETA
+**Definition:** a **probability range** derived from how long similar items have
+historically taken — "80% of P1 bugs have finished within 3 days" — not a single
+calculated date.
+**Why:** a single date computed from guessed estimates was never actually precise;
+it only looked precise. See ADR-001.
+
+### At risk
+**Definition:** an item that is open longer than similar items usually take, and
+has a client-given due date it is now unlikely to meet (K-023).
+**Note:** this is the product's most valuable single signal, and it needs no
+effort data at all — only history and a due date.
+
+### Overlap
+**Redefined:** not two tasks claiming the same hours. Instead: **assigning this
+item would push the person past their normal load.** Hour-level overlap is not
+computable without effort data.
+
+### Blocked vs. On hold
+**Blocked:** waiting on someone outside the team, usually the client (K-022). Our
+accountability clock stops.
+**On hold — preempted:** displaced by more urgent work (K-020). Our
+accountability clock keeps running, and the record names the item that displaced
+it.
+**Why separate:** merging them would hide the difference between "the client
+hasn't replied" and "we chose something else first" — which is exactly the
+distinction that settles arguments about lateness.
+
+### Best developer for a task
+**Partially defined.** Candidate factors: history with similar work, current
+load, absence, and familiarity with the client. Explicitly **not** skill-scored
+in v1 — nobody maintains a skills matrix today, and an unmaintained one produces
+worse recommendations than none.
+**Status:** to be specified as an explicit ranked rule set, never as an opaque
+score. A recommendation a manager cannot interrogate will not be trusted, and
+should not be.
+
+_Any requirement using these terms must mean exactly what is written here._

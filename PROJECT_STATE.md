@@ -10,15 +10,14 @@
 
 ## CURRENT PHASE
 
-**Phase 0 — Product Discovery**
-
-No coding. No architecture. No BRD yet.
+**Phase 0 — Product Discovery: COMPLETE.** Three rounds, 36 questions.
+Still no coding.
 
 ## CURRENT OBJECTIVE
 
-Rounds 1 and 2 complete. **Round 3 — Work Items, Effort & Scope** is open and is
-intended to be the final discovery round. It defines the work item precisely
-enough to build a domain model.
+Get **ADR-001 confirmed or rejected**, then write the BRD. ADR-001 changes the
+computational basis of the product and the BRD cannot be written until it
+settles.
 
 ---
 
@@ -54,6 +53,20 @@ enough to build a domain model.
 - K-016: Delay mechanism: unplanned client bugs and CRs displace planned work.
 - K-017: Hierarchy controls permissions, not just display.
 - K-018: Default visibility is team-level.
+- K-019: **Effort data will not be entered** — no estimates, no actuals (Q3.6,
+  answered pessimistically as asked). The decisive finding of discovery.
+- K-020: **Preemption is the core dynamic** — urgent work puts existing work on
+  hold or transfers it. The system must record *what displaced what*.
+- K-021: All work types share the same fields plus a type column. One work item
+  table plus a type reference table. Closes U-011.
+- K-022: Items are sometimes **blocked waiting on the client** — distinct from
+  being preempted, and must not be merged with it.
+- K-023: **Due dates are client-given inputs.** The product answers "will we make
+  this date?", not "what date will this be?"
+- K-024: Five priority levels, P0–P4.
+- K-025: 10 developers, plus QA, BA and management. Headcount varies.
+- K-026: Handover and splitting are rare, and happen as a consequence of
+  preemption rather than independently.
 
 ## ASSUMED (must be validated)
 
@@ -70,20 +83,22 @@ enough to build a domain model.
   no existing system of record to mirror.
 - A-006: Someone in management will support and mandate this. **Still unverified
   and load-bearing** — the pitch has not happened yet.
-- A-007 (new): Estimates and actual effort will be entered often enough to
-  compute on. **Unverified and load-bearing** — every capacity, availability and
-  ETA feature depends on it. Tested by Q3.6.
+- A-007: Estimates and actual effort will be entered often enough to compute on
+  — **REJECTED by K-019.** This invalidates the hour-arithmetic basis of the
+  original brief. Superseded by ADR-001.
 
 ## UNKNOWN
 
-- U-010: What decisions management actually makes weekly — the proxy stakeholder
-  does not know. Needs a real manager, not another question to us.
-- U-011: Whether work types need different fields/steps or only different
-  labels. Decides whether the model is one table or several shapes. (Q3.2)
-- U-012: What "multiple people on a task" means, and how load is attributed
-  among them. (Q3.3, Q3.4)
-- U-013: Whether effort data will realistically ever be entered. (Q3.6)
-- U-014: Real headcount by role and number of clients. (Q3.10)
+- U-010: What decisions management actually makes weekly — still open, still
+  needs a real manager rather than another question to us.
+- O-001: No QA/verification state appeared in the lifecycle despite QA receiving
+  work directly. Confirm before finalizing the lifecycle.
+- O-002: Who sets priority, and whether P0 automatically preempts.
+- O-003: Whether work should group by client/product for reporting (Q3.11
+  answered a different question).
+- O-004: Starting value for "normal load" per person, to be tuned from data.
+- C-006: Did Q3.7's "everything to be recorded" mean the work item, or the time
+  spent? Working reading is the work item. If it meant time, ADR-001 is affected.
 
 ## DECIDED
 
@@ -102,16 +117,25 @@ enough to build a domain model.
   enough to save it, with everything else optional and addable later. Follows
   from K-012: developers author records, so friction at creation destroys the
   data the whole system computes on.
+- D-006: **ADR-001 — derive workload from flow data, not typed effort.**
+  Load in items not hours; forecasts from history not estimates; typed effort
+  optional enrichment only. Governing principle: *derive, don't ask.*
+  **PROPOSED — awaiting confirmation.**
+- D-007: **ADR-002 — fixed roles on an extensible role table.** Roles are data
+  and can be added; per-role permission editing is deferred.
+  **PROPOSED — awaiting confirmation.**
 
 ## REJECTED
 
-- (none yet)
+- Hour-based capacity, hour-based availability, hour-level overlap detection, and
+  estimate-driven ETA. Not computable without effort data (K-019). Replacements
+  defined in `docs/glossary.md` and ADR-001.
 
 ## OPEN QUESTIONS
 
-Round 3 deck: `docs/discovery/round-03-cards.html`. Twelve questions, four
-pivots. Q3.6 (will effort data ever be entered?) gates every computational
-feature in the product.
+Discovery is closed. Two decisions await confirmation — ADR-001 (substrate) and
+ADR-002 (roles) — plus five small open items (O-001..O-004, C-006) that will be
+carried into the BRD as explicitly marked gaps rather than silently resolved.
 
 ## KNOWN ISSUES / RISKS
 
@@ -126,19 +150,24 @@ feature in the product.
 - R-004: **Proxy stakeholder risk.** Our only business source is not the end
   user and has said they don't know how management decides. Requirements traced
   only to this source are marked TO VALIDATE until a real manager confirms them.
-- R-005: **Over-specification for scale.** Configurable permissions,
-  drag-and-drop hierarchy and delegated visibility rights are being requested for
-  a ~10-person team, while the same stakeholder requires the product not be
-  time-consuming to manage (contradiction C-004). The cost is not only build
-  time — the setup burden lands on the very manager whose buy-in the project
-  depends on. Resolution proposed in Q3.12.
+- R-005: **Over-specification for scale.** Configurable permissions and
+  delegated visibility rights requested for a ~15-person organization, against
+  the same stakeholder's requirement that the product not be time-consuming to
+  manage (C-004). Q3.12 was not answered; compromise proposed in ADR-002.
+- R-006: **Data substrate risk.** With effort data gone, every derived number
+  depends on state transitions being recorded promptly. Q3.7 explicitly permits
+  end-of-day catch-up, which skews cycle-time measurement and makes "in progress
+  right now" unreliable. Mitigation is a design constraint: every state change
+  must be one tap, and EOD catch-up must be treated as normal.
 
 ---
 
 ## NEXT ACTION
 
-1. Answer Round 3 (`docs/discovery/round-03-cards.html`) — final discovery round.
-2. Still outstanding and still the highest-value action available: 30 minutes
-   with one real manager, to close U-010 and verify A-006.
-3. Then Phase 1 — the Business Requirements Document, with numbered traceable
-   requirements derived from the discovery log.
+1. **Confirm or reject ADR-001.** It decides what the product can compute. The
+   BRD is blocked on it.
+2. Confirm or reject ADR-002 (roles), and answer C-006 (did "record everything"
+   mean the work item or the time spent?).
+3. Still outstanding, still the highest-value action available: 30 minutes with
+   one real manager, to close U-010 and verify A-006.
+4. Then Phase 1 — the BRD, with numbered traceable requirements.

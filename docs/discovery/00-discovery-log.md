@@ -271,8 +271,9 @@ faster than the business rules that justify them.
 
 ## Round 3 — Work Items, Effort & Scope
 
-**Status:** OPEN — awaiting answers
+**Status:** ANSWERED — **discovery closed**
 **Date asked:** 2026-08-14
+**Date answered:** 2026-08-14
 **Deck:** `round-03-cards.html`
 
 Purpose: define the work item precisely enough to build a domain model, resolve
@@ -294,9 +295,112 @@ will ever exist. Intended as the **final discovery round**.
 | Q3.11 | Whether work groups by client/product, and whether that drives decisions |
 | Q3.12 | Fixed roles vs configurable permissions for v1 *(pivot, resolves C-004)* |
 
-### Answers
+### Answers (paraphrased)
 
-_To be filled in._
+| Q | Answer |
+|---|---|
+| Q3.1 | Client mails, or comes to a developer's or QA's desk. Developer starts. Sometimes: "I'm on another task, I'll do this after." Sometimes the new task is urgent, so the old one is **put on hold or transferred to someone else**. When done, they mail the client back. |
+| Q3.2 | (a) Same fields, plus a column identifying bug / CR / observation / etc. |
+| Q3.3 | (c) Owner plus helpers — but (a) split and (d) handover also occur. All three have happened. |
+| Q3.4 | Mostly equal, sometimes weighted by skill set. |
+| Q3.5 | Usually no, but rarely yes. |
+| Q3.6 | **(d) Honestly, neither.** Developers would not reliably type an estimate before, or actual time after. |
+| Q3.7 | Everything should be recorded; if someone forgets, they can do it by end of day. |
+| Q3.8 | **Clients give the deadlines.** |
+| Q3.9 | Five levels: P0, P1, P2, P3, P4. Who sets them was not answered. |
+| Q3.10 | **10 developers** (not 10 total). Headcount varies. |
+| Q3.11 | Answered a different question: work is **sometimes pending from the client side**. Grouping by client left unanswered. |
+| Q3.12 | Not selected. Wants to be able to add extra roles and place them within the hierarchy; "will be decided during the project phases". |
+
+### Outcomes of this round
+
+**The decisive finding — Q3.6**
+
+- K-019: **Effort data will not be entered.** No estimates before, no actuals
+  after. Confirmed deliberately and pessimistically, as asked.
+
+Consequence: assumption **A-007 is REJECTED**, and with it the entire
+hour-arithmetic basis of the original brief. Capacity in hours, hour-based
+availability, hour-based overlap detection and estimate-driven ETA are **not
+computable** and must not be specified. Anything built on them would produce
+confident, wrong numbers — the worst possible outcome for a planning tool.
+
+Resolution: **ADR-001** — derive workload from flow data (timestamps, counts,
+history) rather than from typed effort. Nearly all of the originally requested
+capabilities survive this change in a different form. See
+`docs/adr/ADR-001-derive-workload-from-flow-data.md`.
+
+**Other findings that became KNOWN**
+
+- K-020: **Preemption is the core dynamic.** Urgent work arriving causes existing
+  work to be put on hold or transferred. This is the mechanism behind K-016 and
+  behind Round 1's F-002. The system must record *why* an item is on hold —
+  specifically, which item displaced it.
+- K-021: All work types share the same fields; type is a single classifying
+  attribute. The model is **one work item table plus a type reference table** —
+  the cheap outcome. Closes U-011.
+- K-022: Work items are **blocked waiting on the client** at times. Externally
+  blocked and internally preempted are different states with different meanings
+  and must not be merged.
+- K-023: **Due dates are client-given inputs**, not system outputs. The primary
+  question the product answers is therefore "will we make this date?", not "what
+  date will this be?" — a simpler and more valuable computation.
+- K-024: Five priority levels, P0–P4.
+- K-025: 10 developers, plus QA, BA and management. Total headcount larger than
+  the earlier "around 10", still small. Headcount varies over time.
+- K-026: Handover and splitting are rare but real, and occur as a *consequence of
+  preemption* rather than independently.
+
+**Contradiction surfaced**
+
+- C-006: Q3.6 says effort will never be typed; Q3.7 says "everything to be
+  recorded… by EOD". Reading taken: Q3.7 refers to recording the **work item**,
+  not the **time spent**. Recorded as the working interpretation and put to the
+  stakeholder for confirmation. If Q3.7 did mean time, A-007 partially revives
+  and ADR-001 should be revisited.
+
+**Lifecycle derived from Q3.1** (candidate, to be confirmed in the BRD)
+
+| State | Meaning | Source |
+|---|---|---|
+| New | Recorded, no owner yet | K-012 |
+| Queued | Owned, not started — "I'll do it after this one" | Q3.1 |
+| In Progress | Actively being worked | Q3.1 |
+| On Hold — preempted | Displaced by more urgent work; records what displaced it | K-020 |
+| Blocked — waiting on client | Externally blocked, clock stops on our accountability | K-022 |
+| Done | Client informed | Q3.1 |
+
+Reassignment is an **event** that changes the owner, not a state.
+
+**Gaps deliberately left open rather than invented**
+
+- O-001: No verification or QA state appeared in the lifecycle, despite QA staff
+  receiving work directly. Either testing is informal, or it was omitted. Must be
+  confirmed before the lifecycle is finalized.
+- O-002: Who sets priority, and whether P0 automatically preempts, is unstated.
+- O-003: Whether work should be groupable by client/product for reporting is
+  still unanswered (Q3.11 answered a different question).
+- O-004: Rule for how many items one person can hold before being "overloaded" —
+  needs a starting value, to be tuned from real data.
+
+**Risk changes**
+
+- R-006 (new): **Data substrate risk.** With effort data gone, every derived
+  number depends on state transitions being recorded promptly. If developers
+  batch-update at end of day (which Q3.7 explicitly permits), cycle-time
+  measurements skew and "in progress right now" becomes unreliable. Mitigation is
+  a design problem: make state changes single-tap and visible, and treat EOD
+  catch-up as normal rather than exceptional.
+- R-005 (over-specification): **unresolved.** Q3.12 was not answered; the request
+  for addable roles inside the hierarchy stands. Compromise proposed in ADR-002.
+
+---
+
+## Discovery closed
+
+Three rounds, 36 questions. Sufficient to write business requirements. Remaining
+gaps (O-001..O-004, U-010) are recorded and will be carried into the BRD as
+explicitly marked open items rather than silently resolved.
 
 ---
 
