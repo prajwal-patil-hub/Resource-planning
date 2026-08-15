@@ -16,9 +16,10 @@ that your initial idea was wrong while it is still cheap to change.
 **Why it exists:** The cost of changing a decision rises roughly by an order of
 magnitude at each stage: conversation → document → design → code → production
 data. Discovery front-loads the changes into the cheapest stage.
-**Why it matters here:** The initial brief for this project contains at least
-five unvalidated assumptions (see `PROJECT_STATE.md`). Each one, if wrong, would
-invalidate part of the database schema.
+**Why it matters here:** Discovery ran three rounds and rejected two of the
+brief's load-bearing assumptions — that work is plan-shaped (A-002) and that
+effort data would be entered (A-007). Both would have invalidated large parts of
+the schema. Total cost of finding out: 36 questions.
 
 ### Stakeholder
 **What:** Anyone affected by the system or whose approval/behaviour the system
@@ -34,28 +35,33 @@ primary users. If developers get nothing from the system, its data will rot.
 disagree, the source of truth wins by definition.
 **Why it exists:** Copies of data drift. Without a designated authority, you get
 irreconcilable conflicts and nobody knows which number to believe.
-**Why it matters here:** The brief already states an important one: the
-deterministic application, not the AI, is the source of truth for capacity and
-scheduling. There is a second, unresolved one — is *this* system or Jira the
-source of truth for tasks?
+**Why it matters here:** Two apply. First, the deterministic application — not
+the AI — is the source of truth for capacity and scheduling. Second, and settled
+during discovery: **this system is the source of truth for work items**, because
+no other system of record exists (K-007). A third, from ADR-001: the
+StateTransition log is the source of truth for every derived metric, and the
+cached `state` field is only a convenience copy of it.
 
 ### System of Record (SoR)
 **What:** The authoritative store where a business object officially lives and is
 created/edited. E.g. an HR system is the SoR for employment status.
 **Why it exists:** Organizations run many tools that all touch the same object.
 Naming the SoR prevents duplicate, divergent copies.
-**Why it matters here:** If Jira is the SoR for tasks, this product must *mirror*
-tasks (read-mostly, sync, reconcile conflicts, tolerate being offline from Jira).
-If this product is the SoR, it *owns* tasks (full CRUD, validation, lifecycle).
-These are radically different systems with different schemas and failure modes.
-This question must be answered before the domain model.
+**Why it matters here:** **RESOLVED — this product is the SoR for work items.**
+There is no existing tool to mirror (K-007), so it owns them outright: full
+lifecycle, validation, history. Had Jira been the SoR, this would have been a
+mirroring product with sync, drift and reconciliation problems instead. Revisit
+only if the organization adopts a tracker later (ASM-5).
 
 ### System of Engagement (SoE)
 **What:** The tool people actually work in day to day, which may not be the SoR.
 **Why it exists:** Records need to be authoritative; interfaces need to be
 pleasant. These goals conflict, so they are often separated.
-**Why it matters here:** A likely shape for this product is "SoE for planning
-decisions, not SoR for tasks" — managers plan here, work is tracked in Jira.
+**Why it matters here:** The distinction turned out not to apply — this product
+is both, because nothing else exists. Retained because it becomes relevant the
+moment the organization adopts another tracker: at that point we would have to
+decide which system owns work items, and this is the vocabulary for that
+argument.
 
 ### Wedge
 **What:** The narrowest version of the product that is genuinely useful to
@@ -95,10 +101,12 @@ its data incomplete and therefore its outputs wrong.
 actual job. If recording costs more than it returns, people stop — quietly, and
 usually without telling anyone.
 **Why it matters here:** Nothing is tracked today, so this system creates a new
-habit rather than replacing an existing one. Worse, every number it eventually
-produces — capacity, availability, ETA — is only as true as the data people
-bothered to enter. A capacity engine fed by 60%-complete data doesn't give you
-60%-correct answers; it gives you confident, wrong ones.
+habit rather than replacing one. Every number it produces is only as true as the
+data people bothered to enter — a capacity engine fed by 60%-complete data
+doesn't give 60%-correct answers, it gives confident wrong ones. Two design
+responses follow: developers author records themselves as a byproduct of
+receiving work (K-012), and creating one requires nothing but a title (D-005,
+BR-002).
 
 ### Leading vs Lagging Indicator
 **What:** A lagging indicator measures the outcome you want (fewer missed
@@ -187,6 +195,65 @@ and someone must configure it before anyone can use anything. With one
 organization of ~15 people (K-025) there is no second customer to be flexible
 for, and the setup burden lands on the manager whose buy-in the project depends
 on (Q2.8). See ADR-002.
+
+### Entity
+**What:** a thing with distinct identity that persists over time even as its
+attributes change. Test: if you changed every attribute, would it still be "the
+same one"?
+**Why it matters here:** WorkItem, Person, Team and Client are entities. Priority
+is not — see value object.
+
+### Value object
+**What:** a thing defined entirely by its values, with no identity. Two with the
+same values are interchangeable.
+**Why it matters here:** Priority, WorkItemState and DateRange are value objects.
+There is no "this particular P1" as distinct from "that P1". Modelling them as
+entities would produce tables of rows that are really just labels.
+
+### Aggregate / aggregate root
+**What:** a cluster of objects changed as one unit, reached only through a single
+root entity.
+**Why it exists:** it answers "what must be consistent at the same instant?"
+**Why it matters here:** WorkItem is a root containing its participants and
+transitions, because the rule "exactly one owner" spans them and they must change
+together. One transaction changes one aggregate.
+
+### Invariant
+**What:** a rule true at every observable moment, enforced inside the aggregate
+that owns it — not in the UI, not in a service.
+**Why it matters here:** twelve are listed in the domain model. INV-2
+(transitions are append-only) is the one that protects every metric in the
+product.
+
+### Domain event
+**What:** a record that something business-meaningful happened, past tense, with
+its timestamp.
+**Why it matters here more than usual:** under ADR-001 the event log is not an
+audit trail — it is the primary data source. Every number the product shows is
+computed from it.
+
+### Domain service
+**What:** business logic belonging to no single entity.
+**Why it matters here:** "is this person overloaded?" needs their items, their
+history and the calendar. It is not a property of Person. Keeping these separate
+stops entities becoming dumping grounds.
+
+### Bounded context
+**What:** a boundary within which a term has exactly one meaning.
+**Why it matters here:** we have one ("Work Delivery"). At ~15 people with one
+shared vocabulary, splitting would be ceremony. The seam is recorded should that
+change.
+
+### Optimistic locking
+**What:** attach a version to a record; a write states the version it read, and is
+rejected if the stored version has moved on. The caller re-reads and retries.
+**Why "optimistic":** it assumes conflicts are rare and merely detects them,
+rather than locking rows up front and making everyone wait.
+**Why it matters here:** worth noting what it is *not* needed for. Two managers
+assigning work to the same person is not a conflict in this system, because
+nothing is reserved — load is derived by counting, so two assignments simply
+show as a higher load, which is accurate. Locking is needed only for two people
+editing the same work item at once.
 
 ---
 

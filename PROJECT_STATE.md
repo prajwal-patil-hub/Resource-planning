@@ -10,13 +10,13 @@
 
 ## CURRENT PHASE
 
-**Phase 1 — Business Requirements.** Discovery complete (3 rounds, 36 questions).
-BRD v1.0 drafted. Still no coding.
+**Phase 2 — Domain Model.** Discovery complete, BRD v1.0 drafted, domain model
+v1.0 drafted. Still no coding.
 
 ## CURRENT OBJECTIVE
 
-Review BRD v1.0 (`docs/03-brd.md`). Then decide whether to proceed to the domain
-model or to pause and validate ASM-2 with a manager first.
+Review the domain model (`docs/08-domain-model.md`). Then Phase 3 — database
+design, which is a direct translation of it.
 
 ---
 
@@ -129,6 +129,19 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 - D-008: Separate vision, stakeholder and business-process documents **skipped**.
   At this scale they would fragment rather than clarify — their content lives in
   BRD §1–§5. Will be split out only if they grow enough to need it.
+- D-009: **Entity is `Person`, not `Developer`.** QA, BA and managers all own
+  work (K-027). Role is a relationship, not an identity.
+- D-010: **Entity is `WorkItem`, not `Task`.** "Task" implies plan-shaped
+  decomposition; this work is queue-shaped (A-002 rejected).
+- D-011: **`Done` is terminal.** A client rejecting delivered work creates a new
+  linked item rather than reopening the old one — reopening would give a single
+  item several cycle times and corrupt every historical metric.
+- D-012: **Ownership is time-bounded**, not an `owner_id` field. Preserves
+  ownership history through reassignment (BR-015) and covers all three
+  multi-person scenarios from Q3.3 with one structure.
+- D-013: **Optimistic locking** for concurrent edits to one work item.
+  Notably *not* needed for concurrent assignment — nothing is reserved under
+  ADR-001, so two assignments simply show as higher load, which is accurate.
 
 ## REJECTED
 
@@ -144,7 +157,8 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 | `docs/glossary.md` | Living — terms defined before use |
 | `docs/adr/ADR-001` | Accepted |
 | `docs/adr/ADR-002` | Accepted |
-| `docs/03-brd.md` | **v1.0 draft — for review** |
+| `docs/03-brd.md` | v1.0 draft — for review |
+| `docs/08-domain-model.md` | **v1.0 draft — for review** |
 | `docs/pitch/manager-brief.html` | Ready to use — supports ASM-2 |
 
 ## KNOWN ISSUES / RISKS
@@ -174,10 +188,11 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 
 ## NEXT ACTION
 
-1. **Review BRD v1.0** — especially §8.2 (what is excluded and why) and §6
-   (business requirements). Reject anything that doesn't match reality.
-2. **Pitch it.** `docs/pitch/manager-brief.html` exists for this. ASM-2 is the
-   only assumption whose failure kills the project outright, and it is the one
-   assumption that costs 30 minutes to test.
-3. Answer OPEN-2, OPEN-3, OPEN-5 — small, non-blocking.
-4. Then Phase 2 — domain model, derived from BRD §5 and §7.
+1. **Review the domain model** — particularly §5 (lifecycle and clock behaviour)
+   and §11 (what is deliberately absent). Both encode decisions worth
+   disagreeing with if they don't match reality.
+2. **Pitch it.** Still outstanding. ASM-2 remains the only assumption whose
+   failure ends the project, and the only one that costs 30 minutes to test.
+3. Answer OPEN-2, OPEN-3, OPEN-5 — none block the database design.
+4. Then Phase 3 — database design: tables, keys, constraints, indexes,
+   migrations. A direct translation of the domain model.
