@@ -1,7 +1,8 @@
 # ADR-002 — Ship fixed roles on an extensible role table
 
-**Status:** PROPOSED — awaiting stakeholder confirmation
-**Date:** 2026-08-14
+**Status:** ACCEPTED
+**Date proposed:** 2026-08-14
+**Date accepted:** 2026-08-15 — stakeholder approved without amendment
 **Related:** C-004, R-005, K-017, K-018, Q3.12
 
 ---

@@ -353,11 +353,9 @@ capabilities survive this change in a different form. See
 
 **Contradiction surfaced**
 
-- C-006: Q3.6 says effort will never be typed; Q3.7 says "everything to be
-  recorded… by EOD". Reading taken: Q3.7 refers to recording the **work item**,
-  not the **time spent**. Recorded as the working interpretation and put to the
-  stakeholder for confirmation. If Q3.7 did mean time, A-007 partially revives
-  and ADR-001 should be revisited.
+- ~~C-006~~ **RESOLVED 2026-08-15.** Confirmed by the stakeholder: Q3.7's
+  "everything to be recorded" refers to recording the **work item**, not the time
+  spent. A-007 stays rejected; ADR-001 stands unamended.
 
 **Lifecycle derived from Q3.1** (candidate, to be confirmed in the BRD)
 
@@ -374,9 +372,10 @@ Reassignment is an **event** that changes the owner, not a state.
 
 **Gaps deliberately left open rather than invented**
 
-- O-001: No verification or QA state appeared in the lifecycle, despite QA staff
-  receiving work directly. Either testing is informal, or it was omitted. Must be
-  confirmed before the lifecycle is finalized.
+- ~~O-001~~ **CLOSED 2026-08-15.** A QA verification step does exist and is part
+  of the lifecycle (K-027). QA is therefore both a verifier and, per Q3.1, a
+  possible owner of work arriving directly from clients. Sub-questions remain
+  (does every item pass through it; can it fail back) — carried as OPEN-5.
 - O-002: Who sets priority, and whether P0 automatically preempts, is unstated.
 - O-003: Whether work should be groupable by client/product for reporting is
   still unanswered (Q3.11 answered a different question).
@@ -409,3 +408,17 @@ explicitly marked open items rather than silently resolved.
 See `docs/glossary.md` for: Product Discovery, Stakeholder, Source of Truth,
 System of Record, System of Engagement, Wedge, Proxy Stakeholder, Work Intake,
 Adoption Risk, Leading vs Lagging Indicator.
+
+---
+
+## Post-discovery decisions
+
+| Date | Decision |
+|---|---|
+| 2026-08-15 | ADR-001 **accepted** without amendment — flow data, not typed effort |
+| 2026-08-15 | ADR-002 **accepted** without amendment — roles as data, permissions in code for v1 |
+| 2026-08-15 | C-006 resolved — "record everything" means the work item |
+| 2026-08-15 | O-001 closed — QA verification step confirmed (K-027) |
+
+Discovery output is now carried forward in `docs/03-brd.md`. This log is closed
+for new questions; it remains the evidence base every requirement traces back to.

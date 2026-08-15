@@ -3,21 +3,20 @@
 > Single source of truth for "where are we and why". Read this first at the
 > start of every session. Keep it short — detail belongs in `/docs`.
 
-**Last updated:** 2026-08-14
+**Last updated:** 2026-08-15
 **Working name:** Resource Planning (developer workload & capacity platform)
 
 ---
 
 ## CURRENT PHASE
 
-**Phase 0 — Product Discovery: COMPLETE.** Three rounds, 36 questions.
-Still no coding.
+**Phase 1 — Business Requirements.** Discovery complete (3 rounds, 36 questions).
+BRD v1.0 drafted. Still no coding.
 
 ## CURRENT OBJECTIVE
 
-Get **ADR-001 confirmed or rejected**, then write the BRD. ADR-001 changes the
-computational basis of the product and the BRD cannot be written until it
-settles.
+Review BRD v1.0 (`docs/03-brd.md`). Then decide whether to proceed to the domain
+model or to pause and validate ASM-2 with a manager first.
 
 ---
 
@@ -67,6 +66,9 @@ settles.
 - K-025: 10 developers, plus QA, BA and management. Headcount varies.
 - K-026: Handover and splitting are rare, and happen as a consequence of
   preemption rather than independently.
+- K-027: **A QA verification step exists** and is part of the lifecycle. QA also
+  receives work directly from clients (Q3.1), so QA is both a verifier and a
+  potential owner.
 
 ## ASSUMED (must be validated)
 
@@ -89,16 +91,16 @@ settles.
 
 ## UNKNOWN
 
-- U-010: What decisions management actually makes weekly — still open, still
-  needs a real manager rather than another question to us.
-- O-001: No QA/verification state appeared in the lifecycle despite QA receiving
-  work directly. Confirm before finalizing the lifecycle.
-- O-002: Who sets priority, and whether P0 automatically preempts.
-- O-003: Whether work should group by client/product for reporting (Q3.11
-  answered a different question).
-- O-004: Starting value for "normal load" per person, to be tuned from data.
-- C-006: Did Q3.7's "everything to be recorded" mean the work item, or the time
-  spent? Working reading is the work item. If it meant time, ADR-001 is affected.
+Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
+
+- ~~OPEN-1: is there a QA step?~~ → **CLOSED 2026-08-15, yes** (K-027).
+- OPEN-2: who sets priority; does P0 preempt automatically?
+- OPEN-3: should work group by client/product for reporting?
+- OPEN-4: starting default for "normal load" per person.
+- OPEN-5: does every item pass through verification; can it fail back?
+- OPEN-6: what decisions management makes weekly — needs a manager.
+- ~~C-006~~ → **RESOLVED 2026-08-15.** "Record everything by EOD" means the work
+  item, not the time spent. ADR-001 unaffected.
 
 ## DECIDED
 
@@ -120,10 +122,13 @@ settles.
 - D-006: **ADR-001 — derive workload from flow data, not typed effort.**
   Load in items not hours; forecasts from history not estimates; typed effort
   optional enrichment only. Governing principle: *derive, don't ask.*
-  **PROPOSED — awaiting confirmation.**
+  **ACCEPTED 2026-08-15.**
 - D-007: **ADR-002 — fixed roles on an extensible role table.** Roles are data
   and can be added; per-role permission editing is deferred.
-  **PROPOSED — awaiting confirmation.**
+  **ACCEPTED 2026-08-15.**
+- D-008: Separate vision, stakeholder and business-process documents **skipped**.
+  At this scale they would fragment rather than clarify — their content lives in
+  BRD §1–§5. Will be split out only if they grow enough to need it.
 
 ## REJECTED
 
@@ -131,11 +136,16 @@ settles.
   estimate-driven ETA. Not computable without effort data (K-019). Replacements
   defined in `docs/glossary.md` and ADR-001.
 
-## OPEN QUESTIONS
+## DOCUMENTS
 
-Discovery is closed. Two decisions await confirmation — ADR-001 (substrate) and
-ADR-002 (roles) — plus five small open items (O-001..O-004, C-006) that will be
-carried into the BRD as explicitly marked gaps rather than silently resolved.
+| Document | Status |
+|---|---|
+| `docs/discovery/00-discovery-log.md` | Complete — 3 rounds |
+| `docs/glossary.md` | Living — terms defined before use |
+| `docs/adr/ADR-001` | Accepted |
+| `docs/adr/ADR-002` | Accepted |
+| `docs/03-brd.md` | **v1.0 draft — for review** |
+| `docs/pitch/manager-brief.html` | Ready to use — supports ASM-2 |
 
 ## KNOWN ISSUES / RISKS
 
@@ -164,10 +174,10 @@ carried into the BRD as explicitly marked gaps rather than silently resolved.
 
 ## NEXT ACTION
 
-1. **Confirm or reject ADR-001.** It decides what the product can compute. The
-   BRD is blocked on it.
-2. Confirm or reject ADR-002 (roles), and answer C-006 (did "record everything"
-   mean the work item or the time spent?).
-3. Still outstanding, still the highest-value action available: 30 minutes with
-   one real manager, to close U-010 and verify A-006.
-4. Then Phase 1 — the BRD, with numbered traceable requirements.
+1. **Review BRD v1.0** — especially §8.2 (what is excluded and why) and §6
+   (business requirements). Reject anything that doesn't match reality.
+2. **Pitch it.** `docs/pitch/manager-brief.html` exists for this. ASM-2 is the
+   only assumption whose failure kills the project outright, and it is the one
+   assumption that costs 30 minutes to test.
+3. Answer OPEN-2, OPEN-3, OPEN-5 — small, non-blocking.
+4. Then Phase 2 — domain model, derived from BRD §5 and §7.

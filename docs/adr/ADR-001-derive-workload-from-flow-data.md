@@ -1,7 +1,8 @@
 # ADR-001 — Derive workload from flow data, not from typed effort
 
-**Status:** PROPOSED — awaiting stakeholder confirmation
-**Date:** 2026-08-14
+**Status:** ACCEPTED
+**Date proposed:** 2026-08-14
+**Date accepted:** 2026-08-15 — stakeholder approved without amendment
 **Supersedes:** nothing
 **Related:** K-019, A-007 (rejected), D-003, D-004, R-006
 

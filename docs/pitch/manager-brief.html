@@ -1,0 +1,466 @@
+<title>Where the Week Goes</title>
+<style>
+  :root {
+    --ground: #E6E8E3;
+    --surface: #F8F9F6;
+    --ink: #1B211D;
+    --ink-2: #4A544E;
+    --ink-3: #79837C;
+    --rule: #D2D6CE;
+    --rule-soft: #DEE1DA;
+    --accent: #2F6B4F;
+    --accent-ink: #FFFFFF;
+    --accent-soft: rgba(47, 107, 79, .10);
+    --flag: #A94D26;
+    --flag-soft: rgba(169, 77, 38, .10);
+
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #111613;
+      --surface: #1A211D;
+      --ink: #E9ECE7;
+      --ink-2: #A5AFA7;
+      --ink-3: #767F78;
+      --rule: #2C352F;
+      --rule-soft: #232B26;
+      --accent: #74C398;
+      --accent-ink: #102017;
+      --accent-soft: rgba(116, 195, 152, .12);
+      --flag: #E19063;
+      --flag-soft: rgba(225, 144, 99, .12);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #111613;
+    --surface: #1A211D;
+    --ink: #E9ECE7;
+    --ink-2: #A5AFA7;
+    --ink-3: #767F78;
+    --rule: #2C352F;
+    --rule-soft: #232B26;
+    --accent: #74C398;
+    --accent-ink: #102017;
+    --accent-soft: rgba(116, 195, 152, .12);
+    --flag: #E19063;
+    --flag-soft: rgba(225, 144, 99, .12);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: clamp(32px, 7vw, 72px) clamp(20px, 5vw, 40px) 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 42px;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: .7rem;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 14px;
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-size: clamp(2rem, 6vw, 2.9rem);
+    line-height: 1.12;
+    letter-spacing: -.018em;
+    font-weight: 600;
+    margin: 0 0 18px;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    font-size: 1.1rem;
+    line-height: 1.55;
+    color: var(--ink-2);
+    margin: 0;
+    max-width: 58ch;
+  }
+
+  h2 {
+    font-family: var(--serif);
+    font-size: clamp(1.3rem, 3.6vw, 1.6rem);
+    line-height: 1.25;
+    letter-spacing: -.01em;
+    font-weight: 600;
+    margin: 0 0 4px;
+    text-wrap: balance;
+  }
+
+  section { display: flex; flex-direction: column; gap: 16px; }
+
+  p { margin: 0; max-width: 64ch; }
+
+  .lead-rule {
+    height: 2px;
+    background: var(--accent);
+    border: 0;
+    width: 44px;
+    margin: 0;
+  }
+
+  /* ---- The four failures, as observed cases ---- */
+
+  .cases {
+    display: grid;
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .case {
+    background: var(--surface);
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .case .what {
+    font-size: .98rem;
+    color: var(--ink);
+    font-weight: 550;
+  }
+
+  .case .cost {
+    font-size: .89rem;
+    color: var(--ink-2);
+  }
+
+  /* ---- The mechanism callout ---- */
+
+  .mechanism {
+    background: var(--flag-soft);
+    border-left: 3px solid var(--flag);
+    padding: 18px 20px;
+    border-radius: 0 3px 3px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .mechanism p { max-width: 60ch; }
+
+  .mechanism .headline {
+    font-family: var(--serif);
+    font-size: 1.14rem;
+    line-height: 1.4;
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  /* ---- Before / after ---- */
+
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  @media (max-width: 560px) { .compare { grid-template-columns: 1fr; } }
+
+  .col {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .col.now { border-style: dashed; }
+
+  .col h3 {
+    font-family: var(--mono);
+    font-size: .68rem;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0;
+    font-weight: 600;
+  }
+
+  .col.after h3 { color: var(--accent); }
+
+  .col ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 9px; }
+
+  .col li {
+    font-size: .93rem;
+    line-height: 1.45;
+    color: var(--ink-2);
+    padding-left: 17px;
+    position: relative;
+  }
+
+  .col li::before {
+    content: "—";
+    position: absolute;
+    left: 0;
+    color: var(--ink-3);
+  }
+
+  .col.after li { color: var(--ink); }
+  .col.after li::before { content: "✓"; color: var(--accent); font-size: .85em; }
+
+  /* ---- Cost table ---- */
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .93rem;
+  }
+
+  th, td {
+    text-align: left;
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+
+  th {
+    font-family: var(--mono);
+    font-size: .67rem;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 600;
+    border-bottom-color: var(--ink-3);
+  }
+
+  td:first-child { color: var(--ink); font-weight: 550; width: 42%; }
+  td:last-child { color: var(--ink-2); }
+
+  .table-wrap { overflow-x: auto; }
+
+  /* ---- Honest limits ---- */
+
+  .limits {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .limits ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+  .limits li { font-size: .93rem; color: var(--ink-2); }
+  .limits li strong { color: var(--ink); font-weight: 600; }
+
+  /* ---- The ask ---- */
+
+  .ask {
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    border-radius: 3px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .ask h2 { margin: 0; }
+  .ask ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 9px; }
+  .ask li { font-size: .96rem; color: var(--ink); }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 18px;
+    font-size: .84rem;
+    color: var(--ink-3);
+    max-width: 64ch;
+  }
+</style>
+
+<div class="page">
+
+  <header>
+    <p class="eyebrow">Internal proposal · One page</p>
+    <h1>Where the week goes</h1>
+    <p class="standfirst">
+      We deliver client change requests and bug fixes with no record of who is doing
+      what. This is a proposal to fix that — without timesheets, without estimates,
+      and without anything for you to configure.
+    </p>
+  </header>
+
+  <section>
+    <hr class="lead-rule" />
+    <h2>Four things that happen to us</h2>
+    <p>
+      These aren't hypothetical. Each one has happened, and each one is a direct
+      consequence of work being assigned verbally and recorded nowhere.
+    </p>
+
+    <div class="cases">
+      <div class="case">
+        <span class="what">Work is agreed verbally, then forgotten.</span>
+        <span class="cost">We find out we committed to something when the client chases us for it.</span>
+      </div>
+      <div class="case">
+        <span class="what">A task sits untouched for two days because the person was busy elsewhere.</span>
+        <span class="cost">Nobody notices until it's already late.</span>
+      </div>
+      <div class="case">
+        <span class="what">A fix takes fifteen minutes, and we learn that the next day.</span>
+        <span class="cost">We have no basis for telling a client how long anything takes.</span>
+      </div>
+      <div class="case">
+        <span class="what">The person handling a client's work goes on leave.</span>
+        <span class="cost">The client keeps waiting, believing it's in progress.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Underneath all four is one mechanism</h2>
+
+    <div class="mechanism">
+      <p class="headline">Urgent work pushes planned work aside, and nothing records that it happened.</p>
+      <p>
+        A client raises a P0 bug. A developer sets aside the change request they
+        were working on. Nobody writes this down. Two weeks later that change
+        request is described as “late” — when in fact it was displaced, very often
+        by the same client's own urgent request.
+      </p>
+      <p>
+        We currently have no way to show that. So we absorb the blame for it.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2>What changes</h2>
+
+    <div class="compare">
+      <div class="col now">
+        <h3>Today</h3>
+        <ul>
+          <li>Work lives in email, memory and conversation</li>
+          <li>Nobody can say what the team is working on right now</li>
+          <li>Delays are discovered by the client first</li>
+          <li>“Why is this late?” is a matter of opinion</li>
+          <li>Overload is noticed when someone misses something</li>
+        </ul>
+      </div>
+      <div class="col after">
+        <h3>With this</h3>
+        <ul>
+          <li>Every request has a record and an owner</li>
+          <li>One screen shows who has what, right now</li>
+          <li>Work that stops moving surfaces on its own</li>
+          <li>Lateness has a recorded cause, with evidence</li>
+          <li>Overload is visible before it costs us a deadline</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What it asks of the team</h2>
+    <p>
+      Almost nothing, and this is deliberate. Anything that takes longer than
+      telling a colleague simply won't get used.
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Who</th><th>What they do</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Developers &amp; QA</td>
+            <td>Type a one-line title when work reaches them. Tap a status as it moves. That's the whole commitment — no timesheets, no estimates.</td>
+          </tr>
+          <tr>
+            <td>Team leads</td>
+            <td>Use one screen instead of asking around. Assign from it.</td>
+          </tr>
+          <tr>
+            <td>You</td>
+            <td>Nothing to set up, nothing to administer, nobody to chase. Look at it when you want to know where we stand.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      Everything else — how loaded each person is, what's at risk, how long things
+      actually take, where our time goes by client — is calculated from those two
+      actions. Nobody is asked to report on themselves.
+    </p>
+  </section>
+
+  <section>
+    <h2>What it won't do</h2>
+
+    <div class="limits">
+      <ul>
+        <li>
+          <strong>It won't tell you someone has “4 hours free on Tuesday.”</strong>
+          That requires time tracking we're not going to do, and any tool claiming
+          it without that data is guessing at you confidently.
+        </li>
+        <li>
+          <strong>It won't give a single guaranteed delivery date.</strong>
+          It gives a realistic range based on how long similar work has actually
+          taken us — for example, “four out of five bugs like this finished within
+          three days.”
+        </li>
+        <li>
+          <strong>It's not useful on day one for forecasting.</strong>
+          It needs three or four weeks of real use before it knows our patterns.
+          Knowing who is working on what, and what has stalled, works immediately.
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="ask">
+    <h2>What I'm asking for</h2>
+    <ol>
+      <li><strong>Thirty minutes of your time</strong> — I want to hear what you actually decide each week and what you wish you knew, before I build the wrong thing.</li>
+      <li><strong>Agreement to try it with one team for a month.</strong></li>
+      <li><strong>Your backing that recording work is expected</strong> — not enforced, just expected. That alone decides whether this works.</li>
+    </ol>
+    <p style="font-size:.93rem;color:var(--ink-2)">
+      If after a month the team isn't recording at least four out of five requests,
+      I'll say so plainly and we stop. That number is the honest test of whether
+      this is worth continuing.
+    </p>
+  </section>
+
+  <footer>
+    Built in-house. No licence cost, no external service, no client data leaving
+    our systems. Full requirements and design decisions are documented and
+    available for review.
+  </footer>
+
+</div>
