@@ -164,8 +164,8 @@ permissions themselves are fixed in code for v1.
 | Edit item they own | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Edit any item in own team | — | — | ✓ | ✓ | ✓ |
 | Assign work to self | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Assign work to others in own team | — | — | ✓ | ✓ | ✓ |
-| Assign across teams | — | — | — | ✓ | ✓ |
+| Assign work to others in own team | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Assign across teams | — | — | ✓ | ✓ | ✓ |
 | Move own item through states | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Mark verification passed / failed | — | ✓ | ✓ | — | ✓ |
 | Set priority | — | — | ✓ | ✓ | ✓ |
@@ -184,6 +184,14 @@ Notes:
   the team self-balancing, which is one of the cheapest benefits available.
 - QA is a **seeded additional role** under ADR-002, distinguished from Developer
   only by verification rights.
+- **Assignment within a team is open to everyone** (C-007, resolved 2026-08-15).
+  A developer recording work may put a colleague's name on it. The risk of
+  uncoordinated assignment is mitigated by visibility rather than permission —
+  load is visible team-wide before you assign, and every assignment records who
+  made it. Restrict later only if the data shows a real problem.
+- **Cross-team assignment stays restricted** to Team Lead and above. **TO
+  VALIDATE** — assigning into a team whose load you cannot see is the case that
+  actually needs a gate. May be moot if the organization runs as one team.
 - **TO VALIDATE:** the split between Team Lead and Manager is inferred, not
   stated. One conversation with a manager may collapse these into one role.
 
@@ -509,3 +517,4 @@ chain in the SRS.
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-08-15 | Initial draft from discovery rounds 1–3, ADR-001, ADR-002. OPEN-1 closed same day (QA step confirmed) |
+| 1.1 | 2026-08-15 | Role matrix §3.3 corrected: Developer and QA may assign within their own team (C-007). OLD: assignment restricted to Team Lead and above. REASON: stakeholder confirmed developers can name an assignee when recording work, consistent with Q2.2. IMPACT: one rule in the `access` module; no change to entities, tables, or the domain model's structure |

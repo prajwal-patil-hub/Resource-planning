@@ -572,41 +572,51 @@ Every omission is a decision, not an oversight.
 | **OPEN-4** | Default starting value for `normal_load` | A seeded number. **Proposal: start at 3**, tune per person after four weeks of history |
 | **OPEN-5** | Does every item pass through verification? | Currently optional (`InProgress → Done` allowed). If mandatory for some types, becomes a per-type rule — additive |
 | **OPEN-6** | What managers decide weekly | May add services; unlikely to change entities |
-| **OPEN-7** | **Who may assign work?** K-028 says one manager assigns. Q2.2 said developers pick an assignee from a dropdown when creating an item. Both cannot be fully true — see C-007 | Behavioural (permission rule), not structural. The model supports either |
+| ~~OPEN-7~~ | ~~Who may assign work?~~ **CLOSED** — anyone may assign; see §13a | None |
 
 None of these block the database design. All are additive or behavioural.
 
 ---
 
-## 13a. Contradiction C-007 — who assigns work
+## 13a. C-007 — who assigns work: RESOLVED
 
-**Raised 2026-08-15, unresolved.**
+**Raised 2026-08-15. Resolved 2026-08-15.**
 
-| Source | Says |
+**Answer: anyone recording work may put a name on it.** Assignment is not
+reserved to the manager.
+
+This reconciles the sources that appeared to conflict:
+
+| Source | Status after resolution |
 |---|---|
-| K-028 (Q&A, 2026-08-15) | Assignment is centralized — **one manager assigns** |
-| K-012 / Q2.2 (Round 2) | Developers create the item and **select the assignee from a dropdown**, with multiple people selectable |
-| BRD §3.3 role matrix | Team Lead assigns within team; Manager assigns across teams |
-| K-015 (Round 2) | The **Team Lead** is who notices stalled work today |
+| Q2.2 — developers select an assignee from a dropdown | **Correct, and normative** |
+| K-028 — "one manager assigns" | Describes that the organization has **one manager**, who does managerial allocation. Not an exclusive permission |
+| K-015 — Team Lead notices stalled work | Unaffected — noticing is not assigning |
+| BRD role matrix — assignment restricted to Lead/Manager | **Wrong. Corrected** — Developer and QA may assign within their own team |
 
-These cannot all hold. Three readings are plausible:
+### The consequence worth stating plainly
 
-1. **Strictly centralized** — only the manager ever sets an owner. Developers
-   record work but leave it unassigned. Simple, but makes the manager a
-   bottleneck: if they are absent, nothing gets assigned, and F-004 (absence
-   stalls work) reappears one level up, applied to the assigner.
-2. **Centralized for *others*, open for *self*** — anyone may take an unowned
-   item themselves; only the manager assigns work *to someone else*. This
-   reconciles K-028 with Q2.2 and is the most likely intent.
-3. **Manager assigns, Team Lead reassigns within team** — matches K-015, and
-   keeps the ability to react when someone is absent.
+Round 2 identified a risk: if several people can hand work to the same person
+without knowing about each other, that alone explains much of the overload
+problem. Open assignment does not remove that risk.
 
-**Working assumption until resolved: reading 2**, because it contradicts neither
-source outright and keeps the manager off the critical path for every single item.
+**The mitigation is visibility, not permission.** Three properties of this design
+already address it:
 
-**No structural impact.** Assignment is an operation guarded by a permission
-check, not a shape in the model. Whichever reading wins changes one rule in the
-`access` module and one row in the role matrix — no tables, no entities.
+1. Nothing is *reserved* (ADR-001), so a second assignment is never a silent
+   double-booking — it is simply a visible increase in that person's load.
+2. Load is shown to the whole team (RULE-011, BR-008), so the second assigner can
+   see what the first one did before deciding.
+3. Every assignment is recorded with who did it and when, so a pattern of one
+   person overloading another is visible rather than anecdotal.
+
+This is consistent with D-003 — visibility first, control later if evidence
+demands it. **Restricting assignment now would be solving a problem we have not
+yet observed, at the cost of the friction the whole design is trying to avoid.**
+
+**Revisit if:** the load data, once real, shows people being overloaded by
+uncoordinated assignment. At that point restriction becomes evidence-based rather
+than speculative — one rule in the `access` module, no structural change.
 
 ---
 
@@ -616,3 +626,4 @@ check, not a shape in the model. Whichever reading wins changes one rule in the
 |---|---|---|
 | 1.0 | 2026-08-15 | Initial model from BRD v1.0, ADR-001, ADR-002 |
 | 1.1 | 2026-08-15 | K-028: assignment is centralized, one manager assigns. Two-manager concurrency scenario withdrawn from §10. Contradiction C-007 raised (§13a) with a working assumption; no structural impact |
+| 1.2 | 2026-08-15 | C-007 resolved: anyone recording work may assign it. Role matrix corrected. Mitigation for uncoordinated assignment is visibility, not permission |

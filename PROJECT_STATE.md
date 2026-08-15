@@ -10,13 +10,14 @@
 
 ## CURRENT PHASE
 
-**Phase 2 — Domain Model.** Discovery complete, BRD v1.0 drafted, domain model
-v1.0 drafted. Still no coding.
+**Phase 3 — Database Design.** Discovery complete; BRD, domain model and
+database design all drafted. **Still no coding — implementation not yet
+approved.**
 
 ## CURRENT OBJECTIVE
 
-Review the domain model (`docs/08-domain-model.md`). Then Phase 3 — database
-design, which is a direct translation of it.
+Review the database design (`docs/11-database-design.md`), then decide whether to
+approve implementation. Everything after this point writes code.
 
 ---
 
@@ -69,9 +70,11 @@ design, which is a direct translation of it.
 - K-027: **A QA verification step exists** and is part of the lifecycle. QA also
   receives work directly from clients (Q3.1), so QA is both a verifier and a
   potential owner.
-- K-028: **Assignment is centralized — one manager assigns.** Corrects the
-  original brief's "two managers assign simultaneously" edge case, which is
-  withdrawn. Raises C-007 against Q2.2 and the role matrix.
+- K-028: The organization has **one manager**, who does managerial allocation.
+  Withdraws the brief's "two managers assign simultaneously" edge case.
+- K-029: **Anyone recording work may assign it** (C-007, resolved). Assignment is
+  not reserved to the manager. Uncoordinated assignment is mitigated by
+  visibility and attribution, not by permission.
 
 ## ASSUMED (must be validated)
 
@@ -102,11 +105,11 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 - OPEN-4: starting default for "normal load" per person.
 - OPEN-5: does every item pass through verification; can it fail back?
 - OPEN-6: what decisions management makes weekly — needs a manager.
-- OPEN-7 / C-007: **who may assign work?** K-028 says one manager assigns; Q2.2
-  said developers pick an assignee when creating an item; the role matrix lets
-  Team Leads assign within team. Working assumption: anyone may take an unowned
-  item themselves, but only the manager assigns work *to someone else*.
-  Behavioural only — no structural impact. See domain model §13a.
+- ~~OPEN-7 / C-007~~ → **RESOLVED 2026-08-15.** Anyone may assign within their
+  team. BRD role matrix corrected. Cross-team assignment stays restricted
+  (TO VALIDATE).
+- ~~OPEN-4~~ → **CLOSED.** `normal_load` defaults to 3, tuned per person after
+  four weeks of history.
 - ~~C-006~~ → **RESOLVED 2026-08-15.** "Record everything by EOD" means the work
   item, not the time spent. ADR-001 unaffected.
 
@@ -147,6 +150,12 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 - D-012: **Ownership is time-bounded**, not an `owner_id` field. Preserves
   ownership history through reassignment (BR-015) and covers all three
   multi-person scenarios from Q3.3 with one structure.
+- D-014: **`state` is deliberately denormalized** onto `work_item`, guarded by a
+  trigger so it can only change alongside a recorded transition, plus a
+  consistency query that proves it has not drifted.
+- D-015: **Fixed lists are CHECK constraints; extensible lists are tables.**
+  States are fixed (adding one changes behaviour); work types are extensible
+  (adding one changes only data).
 - D-013: **Optimistic locking** for concurrent edits to one work item.
   Notably *not* needed for concurrent assignment — nothing is reserved under
   ADR-001, so two assignments simply show as higher load, which is accurate.
@@ -166,7 +175,8 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 | `docs/adr/ADR-001` | Accepted |
 | `docs/adr/ADR-002` | Accepted |
 | `docs/03-brd.md` | v1.0 draft — for review |
-| `docs/08-domain-model.md` | **v1.0 draft — for review** |
+| `docs/08-domain-model.md` | v1.2 draft — for review |
+| `docs/11-database-design.md` | **v1.0 draft — for review** |
 | `docs/pitch/manager-brief.html` | Ready to use — supports ASM-2 |
 
 ## KNOWN ISSUES / RISKS
@@ -196,10 +206,10 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 
 ## NEXT ACTION
 
-1. **Resolve C-007 — who may assign work.** One sentence closes it. It is the
-   only open item with a working assumption currently standing in for an answer.
-2. **Pitch it.** Still outstanding. ASM-2 remains the only assumption whose
-   failure ends the project, and the only one that costs 30 minutes to test.
-3. Answer OPEN-2, OPEN-3, OPEN-5 — none block the database design.
-4. Then Phase 3 — database design: tables, keys, constraints, indexes,
-   migrations. A direct translation of the domain model.
+1. **Decide whether to approve implementation.** Design is complete enough to
+   build Feature 1. Per working agreement 12, no code is written until this is
+   explicitly approved.
+2. **Pitch it.** Still outstanding after three phases. ASM-2 remains the only
+   assumption whose failure ends the project, and the only one testable in 30
+   minutes.
+3. Answer OPEN-2, OPEN-3, OPEN-5 — none block implementation.
