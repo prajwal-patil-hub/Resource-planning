@@ -3,7 +3,7 @@
 > Single source of truth for "where are we and why". Read this first at the
 > start of every session. Keep it short — detail belongs in `/docs`.
 
-**Last updated:** 2026-08-15
+**Last updated:** 2026-08-16
 **Working name:** Resource Planning (developer workload & capacity platform)
 
 ---
@@ -214,6 +214,11 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
   excludes client-blocked work from stalled and uncovered, and only flags
   at-risk items while there is still time to act. One item that does not belong
   teaches people to skim, and a list people skim is worse than no list.
+- D-032: **Fix the input before building what consumes it.** Backdated recording
+  (BR-004) and assign-time context (BR-016) come before forecasting (BR-018).
+  Under ADR-001 every number is derived from recorded flow data, so a forecast
+  built on systematically wrong timestamps is a confident false answer rather
+  than a weak one.
 - D-013: **Optimistic locking** for concurrent edits to one work item.
   Notably *not* needed for concurrent assignment — nothing is reserved under
   ADR-001, so two assignments simply show as higher load, which is accurate.
@@ -299,12 +304,23 @@ Ordered build plan in `docs/14-build-status.md`:
 2. ~~Authentication and people management~~ — **DONE 2026-08-16**
 3. ~~Absence and non-working days~~ — **DONE 2026-08-16**
 4. ~~Attention view~~ — **DONE 2026-08-16** (/attention)
-5. **Flow statistics and forecasting** ← next
+5. **Recording context — backdating + assign-time load** ← next
+   (BR-004: the service takes a backdated `occurred_at`, the composer has no
+   "when" field, so catch-up entries stamp the wrong time. BR-016: the assign
+   dropdown is bare names and says nothing about load or absence)
+6. Flow statistics and forecasting
    (BR-017 risk is partly done — "due soon and not started" is live;
-   BR-018 probability ranges still need history)
-6. Reporting by client and type
-7. Reference data management
-8. Search
-9. Deployment, backups, restore
+   BR-018 probability ranges still need history. Closes BO-6, the last
+   unmet business objective)
+7. Reporting by client and type
+8. Reference data management
+9. Search
+10. Deployment, backups, restore
 
-Items 1–4 are what a pilot needs. 5–6 are what make it worth keeping.
+Items 1–5 are what a pilot needs. 6–7 are what make it worth keeping.
+
+**Why 5 was promoted above forecasting (D-032).** ADR-001 committed the product
+to deriving every number from recorded flow data. A forecast built on timestamps
+that are systematically wrong — because someone recording at 6pm stamps 6pm — is
+not a weak forecast but a confident false one, which is the failure ADR-001
+exists to prevent. Fix the input before building what consumes it.
