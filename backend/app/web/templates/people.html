@@ -55,7 +55,7 @@
       <thead>
         <tr>
           <th>Name</th><th>Email</th><th>Role</th><th>Team</th>
-          <th>Normal load</th><th>Login</th><th>Last seen</th><th>Active</th><th></th>
+          <th>Normal load</th><th>Login</th><th>Active</th><th></th>
         </tr>
       </thead>
       <tbody>
@@ -98,29 +98,132 @@
                 <span class="state-pill" style="color:var(--text-3)">no login</span>
               {% endif %}
             </td>
-            <td class="t-num">{{ p.last_login_at.strftime('%d %b %H:%M') if p.last_login_at else '—' }}</td>
             <td>
               <input type="checkbox" name="active" {% if p.active %}checked{% endif %}
                      {% if p.id == me.id %}disabled title="You cannot deactivate yourself"{% endif %} />
             </td>
-            <td><button class="btn btn-sm" type="submit">Save</button></td>
+            <td class="row-actions">
+              <button class="btn btn-sm" type="submit">Save</button>
+              <button class="btn btn-sm" type="button" data-settings="{{ p.id }}"
+                      formnovalidate>Settings</button>
+            </td>
           </form>
-        </tr>
-        <tr style="{% if not p.active %}opacity:.5{% endif %}">
-          <td colspan="9" style="padding-top:0">
-            <form method="post" action="/people/{{ p.id }}/reset-password" class="inline-reset">
-              <span class="fld-note">Set a new password for {{ p.name }}:</span>
-              <input type="password" name="password" minlength="10" placeholder="at least 10 characters"
-                     autocomplete="new-password" />
-              <button class="btn btn-sm" type="submit">Reset</button>
-              <span class="fld-note">Signs them out everywhere.</span>
-            </form>
-          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </section>
+
+  {# One dialog per person. A native <dialog> — real focus trapping, Escape to
+     close, and no library. Everything that is not routine day-to-day editing
+     lives in here, so the table stays a table. #}
+  {% for p in people %}
+  <dialog class="sheet glass" id="settings-{{ p.id }}">
+    <header class="sheet-head">
+      <span class="assignee">
+        <span class="avatar" aria-hidden="true">{{ p.name[:1] | upper }}</span>
+        <strong>{{ p.name }}</strong>
+      </span>
+      <button class="btn btn-sm" type="button" data-close="{{ p.id }}" aria-label="Close">✕</button>
+    </header>
+
+    <dl class="sheet-facts">
+      <div><dt>Email</dt><dd>{{ p.email }}</dd></div>
+      <div><dt>Role</dt><dd>{{ p.role.name }}</dd></div>
+      <div><dt>Team</dt><dd>{{ p.team.name if p.team else '—' }}</dd></div>
+      <div><dt>Last signed in</dt><dd>{{ p.last_login_at.strftime('%d %b %Y, %H:%M') if p.last_login_at else 'never' }}</dd></div>
+      <div><dt>Login</dt><dd>
+        {% if not p.password_hash %}no password set
+        {% elif p.must_change_password %}must change at next sign-in
+        {% else %}active{% endif %}
+      </dd></div>
+      {% if p.locked_until %}
+      <div><dt>Locked</dt><dd style="color:var(--warn)">until {{ p.locked_until.strftime('%H:%M') }}</dd></div>
+      {% endif %}
+    </dl>
+
+    <section class="sheet-section">
+      <h3>{{ 'Change password' if p.id == me.id else 'Set a new password' }}</h3>
+      <form method="post" action="/people/{{ p.id }}/reset-password" class="sheet-form">
+        <input type="password" name="password" minlength="10" required
+               placeholder="At least 10 characters" autocomplete="new-password" />
+        <button class="btn btn-primary btn-sm" type="submit">Save password</button>
+      </form>
+      <p class="fld-note">
+        They will be asked to choose their own at next sign-in, and every device
+        they are signed in on is signed out.
+      </p>
+    </section>
+
+    <section class="sheet-section">
+      <h3>Access</h3>
+      <div class="sheet-actions">
+        <form method="post" action="/people/{{ p.id }}/sessions/revoke">
+          <button class="btn btn-sm" type="submit">Sign out everywhere</button>
+        </form>
+        <form method="post" action="/people/{{ p.id }}/force-change">
+          <button class="btn btn-sm" type="submit">Force password change</button>
+        </form>
+        {% if p.locked_until %}
+        <form method="post" action="/people/{{ p.id }}/unlock">
+          <button class="btn btn-sm" type="submit">Unlock account</button>
+        </form>
+        {% endif %}
+      </div>
+      <p class="fld-note">
+        Locked accounts unlock themselves after 15 minutes; this is for when
+        someone needs back in now.
+      </p>
+    </section>
+
+    <section class="sheet-section">
+      <h3>Time off</h3>
+      <form method="post" action="/absence" class="sheet-form">
+        <input type="hidden" name="person_id" value="{{ p.id }}" />
+        <input type="date" name="start" required aria-label="First day" />
+        <input type="date" name="end" required aria-label="Last day" />
+        <select name="kind" aria-label="Kind">
+          <option value="LEAVE">Leave</option>
+          <option value="HOLIDAY">Public holiday</option>
+          <option value="OTHER">Other</option>
+        </select>
+        <button class="btn btn-sm" type="submit">Record</button>
+      </form>
+      <p class="fld-note">Last day is the last day away, not the day back.</p>
+    </section>
+
+    <section class="sheet-section">
+      <h3>Status</h3>
+      <p class="fld-note" style="margin-top:0">
+        {% if p.active %}
+        Deactivating ends their access immediately and keeps every record of
+        what they did. Change it with the Active tick in the table, then Save.
+        {% else %}
+        Deactivated{% if p.left_on %} on {{ p.left_on.strftime('%d %b %Y') }}{% endif %}.
+        Their history is intact and still counts toward every past figure.
+        {% endif %}
+      </p>
+    </section>
+  </dialog>
+  {% endfor %}
+
+  <script>
+    document.querySelectorAll("[data-settings]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        document.getElementById("settings-" + button.dataset.settings).showModal();
+      });
+    });
+    document.querySelectorAll("[data-close]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        document.getElementById("settings-" + button.dataset.close).close();
+      });
+    });
+    // Clicking the backdrop closes it — the dialog element itself is the
+    // backdrop, so a click landing on it (not on its children) means outside.
+    document.querySelectorAll("dialog.sheet").forEach(function (d) {
+      d.addEventListener("click", function (e) { if (e.target === d) d.close(); });
+    });
+  </script>
 
   <p class="fld-note" style="max-width:70ch">
     Nobody is ever deleted. Deactivating ends their access immediately and keeps

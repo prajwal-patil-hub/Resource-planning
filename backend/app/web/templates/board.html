@@ -8,10 +8,13 @@
   <main class="board">
     {% for state, label, entries in columns %}
     <section class="column glass anim-rise" style="animation-delay:{{ 90 + loop.index0 * 45 }}ms">
-      <div class="column-head">
+      {# Clicking the heading opens this state in focus mode. #}
+      <a class="column-head" href="/?view=focus&state={{ state.value }}"
+         title="Open {{ label }} in focus mode">
         <h2 class="column-title">{{ label }}</h2>
         <span class="count">{{ entries | length }}</span>
-      </div>
+        <span class="column-focus" aria-hidden="true">⤢</span>
+      </a>
       <div class="cards stagger">
         {% for e in entries %}
         <a class="card glass-raised" href="/items/{{ e.item.id }}" title="{{ e.item.title }}">

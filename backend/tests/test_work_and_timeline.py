@@ -5,10 +5,11 @@ time, so the arithmetic is checked exactly instead of approximately.
 """
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
 import pytest
 
+from app.flow.calendar import WorkingCalendar, working_duration
 from app.flow.load import load_for_team
 from app.flow.timeline import build_timeline, format_duration
 from app.work.lifecycle import IllegalTransition, State
@@ -130,6 +131,12 @@ def test_backdated_change_cannot_precede_the_previous_one(session, person):
 # --------------------------------------------------------------------------
 
 
+#: No weekends, no holidays. Used where the test is about state arithmetic
+#: rather than the working calendar — otherwise the result would depend on
+#: which day of the week the suite runs.
+ALWAYS_WORKING = WorkingCalendar(weekend_days=frozenset(), holidays=frozenset())
+
+
 def test_time_in_state_is_computed_from_the_event_log(session, person, qa_person):
     """The full journey: recorded, queued, started, preempted, resumed,
     blocked on the client, verified, done — with the arithmetic checked."""
@@ -158,7 +165,7 @@ def test_time_in_state_is_computed_from_the_event_log(session, person, qa_person
     move(State.IN_VERIFICATION, 38)                              # ACTIVE   1h
     move(State.DONE, 39)                                         # VERIFY   1h
 
-    tl = build_timeline(session, item.id)
+    tl = build_timeline(session, item.id, calendar=ALWAYS_WORKING)
 
     assert tl.time_in_state[State.NEW] == timedelta(hours=1)
     assert tl.time_in_state[State.QUEUED] == timedelta(hours=2)
@@ -357,3 +364,70 @@ def test_title_cannot_be_edited_to_blank(session, person):
 
     with pytest.raises(WorkItemError, match="needs a title"):
         update_work_item(session, item=item, actor_id=person.id, changes={"title": "   "})
+
+
+# --------------------------------------------------------------------------
+# Working time (BR-014)
+# --------------------------------------------------------------------------
+
+
+def test_weekends_are_excluded_from_the_time_we_answer_for(session, person):
+    """A bug raised Friday evening and fixed Monday morning is not a three-day
+    failure. Calendar time says what the client waited; working time says how
+    long we actually had."""
+    # Computed rather than hardcoded: fixed dates drift into the future and hit
+    # the no-future-dating guard, and a fixed past date eventually ages out.
+    day = datetime.now(UTC).date() - timedelta(days=7)
+    while day.isoweekday() != 5:          # 5 = Friday
+        day -= timedelta(days=1)
+    friday_evening = datetime.combine(day, time(17, 0), tzinfo=UTC)
+    monday_morning = friday_evening + timedelta(days=2, hours=16)   # Monday 09:00
+    weekends = WorkingCalendar(weekend_days=frozenset({6, 7}), holidays=frozenset())
+
+    item = create_work_item(
+        session, title="Raised on Friday", created_by_id=person.id,
+        occurred_at=friday_evening,
+    )
+    assign(session, item=item, person_id=person.id, actor_id=person.id, occurred_at=friday_evening)
+    transition(
+        session, item=item, to_state=State.IN_PROGRESS, actor_id=person.id,
+        occurred_at=monday_morning,
+    )
+    transition(
+        session, item=item, to_state=State.DONE, actor_id=person.id,
+        occurred_at=monday_morning + timedelta(hours=1),
+    )
+
+    tl = build_timeline(session, item.id, calendar=weekends)
+
+    # Calendar: Friday 17:00 to Monday 10:00 is 2 days 17 hours.
+    assert tl.total_elapsed == timedelta(days=2, hours=17)
+    # Working: 7h of Friday + 10h of Monday. The weekend is gone.
+    assert tl.working_elapsed == timedelta(hours=17)
+    assert tl.weekend_and_holiday_time == timedelta(days=2)
+    assert tl.accountable_elapsed == timedelta(hours=17)
+
+
+def test_a_public_holiday_is_excluded_too(session, person):
+    from app.models import NonWorkingDay
+
+    session.add(NonWorkingDay(day=date(2026, 8, 19), name="Test holiday"))
+    session.flush()
+
+    calendar = WorkingCalendar(
+        weekend_days=frozenset({6, 7}), holidays=frozenset({date(2026, 8, 19)})
+    )
+    tuesday = datetime(2026, 8, 18, 9, 0, tzinfo=UTC)
+    thursday = datetime(2026, 8, 20, 9, 0, tzinfo=UTC)
+
+    assert thursday - tuesday == timedelta(days=2)
+    assert working_duration(tuesday, thursday, calendar) == timedelta(days=1)
+
+
+def test_working_days_between_counts_inclusively(session):
+    calendar = WorkingCalendar(weekend_days=frozenset({6, 7}), holidays=frozenset())
+    # Mon 17 Aug to Fri 21 Aug 2026.
+    assert calendar.working_days_between(date(2026, 8, 17), date(2026, 8, 21)) == 5
+    # Same week plus the weekend — still five working days.
+    assert calendar.working_days_between(date(2026, 8, 17), date(2026, 8, 23)) == 5
+    assert calendar.working_days_between(date(2026, 8, 22), date(2026, 8, 23)) == 0

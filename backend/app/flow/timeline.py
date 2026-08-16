@@ -22,6 +22,7 @@ from app.models import (
     WorkItemAudit,
     WorkItemParticipant,
 )
+from app.flow.calendar import WorkingCalendar, working_duration
 from app.work.lifecycle import CLOCK_STOPPED, LABELS, TERMINAL, State
 
 
@@ -33,6 +34,8 @@ class Span:
     entered_at: datetime
     left_at: datetime | None
     duration: timedelta
+    #: The same span with weekends and holidays removed (BR-014).
+    working_duration: timedelta = timedelta()
 
     @property
     def is_open(self) -> bool:
@@ -78,7 +81,9 @@ class ItemTimeline:
     transitions: list[StateTransition] = field(default_factory=list)
 
     time_in_state: dict[State, timedelta] = field(default_factory=dict)
+    working_time_in_state: dict[State, timedelta] = field(default_factory=dict)
     total_elapsed: timedelta = timedelta()
+    working_elapsed: timedelta = timedelta()
     active_time: timedelta = timedelta()
     waiting_on_us: timedelta = timedelta()
     waiting_on_client: timedelta = timedelta()
@@ -90,21 +95,47 @@ class ItemTimeline:
 
     @property
     def accountable_elapsed(self) -> timedelta:
-        """Elapsed time excluding periods we were waiting on the client.
+        """Working time we are answerable for.
 
-        RULE-005. This is the number to use when discussing lateness — it is the
-        part of the delay that is ours.
+        Two corrections applied to raw elapsed time, for two different reasons:
+
+        - **weekends and holidays removed** (BR-014) — nobody was working, so
+          counting it would make every Friday-afternoon request look mishandled;
+        - **time waiting on the client removed** (RULE-005) — the delay was
+          theirs.
+
+        This is the number to use when discussing lateness. `total_elapsed`
+        stays calendar time, because that is what the client actually waited.
         """
-        return self.total_elapsed - self.waiting_on_client
+        return max(
+            timedelta(),
+            self.working_elapsed - self.working_time_in_state.get(State.BLOCKED_ON_CLIENT, timedelta()),
+        )
+
+    @property
+    def weekend_and_holiday_time(self) -> timedelta:
+        """How much of the wall clock was non-working. Shown so the difference
+        between the two elapsed figures is never mysterious (BR-020)."""
+        return max(timedelta(), self.total_elapsed - self.working_elapsed)
 
 
-def build_timeline(session: Session, work_item_id: int, *, now: datetime | None = None) -> ItemTimeline:
+def build_timeline(
+    session: Session,
+    work_item_id: int,
+    *,
+    now: datetime | None = None,
+    calendar: WorkingCalendar | None = None,
+) -> ItemTimeline:
     """Reconstruct one item's history from its recorded events."""
     item = session.get(WorkItem, work_item_id)
     if item is None:
         raise LookupError(f"No work item {work_item_id}")
 
     now = now or datetime.now(UTC)
+    if calendar is None:
+        from app.flow.calendar import load_calendar
+
+        calendar = load_calendar(session)
 
     transitions = list(
         session.scalars(
@@ -144,9 +175,20 @@ def build_timeline(session: Session, work_item_id: int, *, now: datetime | None 
         else:
             duration = (left or now) - entered
 
-        span = Span(state=state, entered_at=entered, left_at=left, duration=duration)
+        working = (
+            timedelta()
+            if duration == timedelta()
+            else working_duration(entered, left or now, calendar)
+        )
+        span = Span(
+            state=state, entered_at=entered, left_at=left,
+            duration=duration, working_duration=working,
+        )
         timeline.spans.append(span)
         timeline.time_in_state[state] = timeline.time_in_state.get(state, timedelta()) + duration
+        timeline.working_time_in_state[state] = (
+            timeline.working_time_in_state.get(state, timedelta()) + working
+        )
 
         lag = event.recorded_at - event.occurred_at
         timeline.max_recording_lag = max(timeline.max_recording_lag, lag)
@@ -161,17 +203,20 @@ def build_timeline(session: Session, work_item_id: int, *, now: datetime | None 
 
     end = timeline.finished_at or now
     timeline.total_elapsed = end - timeline.created_at
+    timeline.working_elapsed = working_duration(timeline.created_at, end, calendar)
 
-    timeline.active_time = timeline.time_in_state.get(State.IN_PROGRESS, timedelta())
-    timeline.verification_time = timeline.time_in_state.get(State.IN_VERIFICATION, timedelta())
+    # These are reported in working time: they describe how long WE had the
+    # item, and counting a weekend against a developer is simply wrong.
+    working = timeline.working_time_in_state
+    timeline.active_time = working.get(State.IN_PROGRESS, timedelta())
+    timeline.verification_time = working.get(State.IN_VERIFICATION, timedelta())
     timeline.waiting_on_client = sum(
-        (timeline.time_in_state.get(s, timedelta()) for s in CLOCK_STOPPED),
-        timedelta(),
+        (working.get(s, timedelta()) for s in CLOCK_STOPPED), timedelta()
     )
     timeline.waiting_on_us = (
-        timeline.time_in_state.get(State.NEW, timedelta())
-        + timeline.time_in_state.get(State.QUEUED, timedelta())
-        + timeline.time_in_state.get(State.ON_HOLD_PREEMPTED, timedelta())
+        working.get(State.NEW, timedelta())
+        + working.get(State.QUEUED, timedelta())
+        + working.get(State.ON_HOLD_PREEMPTED, timedelta())
     )
 
     # Time to first touch: created -> first time anyone actually started it.
@@ -182,7 +227,9 @@ def build_timeline(session: Session, work_item_id: int, *, now: datetime | None 
         None,
     )
     if first_start is not None:
-        timeline.time_to_first_touch = first_start - timeline.created_at
+        timeline.time_to_first_touch = working_duration(
+            timeline.created_at, first_start, calendar
+        )
 
     # ---- Who worked on it, and when ----
     participants = list(

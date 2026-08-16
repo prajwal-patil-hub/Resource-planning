@@ -17,7 +17,7 @@ from sqlalchemy import (
     SmallInteger,
     Text,
 )
-from sqlalchemy.dialects.postgresql import DATERANGE
+from sqlalchemy.dialects.postgresql import ARRAY, DATERANGE
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -117,8 +117,40 @@ class Absence(Base):
     period: Mapped[object] = mapped_column(DATERANGE)
     kind: Mapped[str] = mapped_column(Text)
     approved_by_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("person.id"))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_by_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("person.id"))
+    created_by_name: Mapped[str | None] = mapped_column(Text)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_by_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("person.id"))
+
+    person: Mapped["Person"] = relationship(lazy="joined", foreign_keys=[person_id])
+
+    @property
+    def first_day(self) -> date:
+        return self.period.lower
+
+    @property
+    def last_day(self) -> date:
+        """The period is stored half-open, so the last day away is upper - 1."""
+        from datetime import timedelta as _td
+
+        return self.period.upper - _td(days=1)
+
+    @property
+    def is_approved(self) -> bool:
+        return self.approved_by_id is not None
+
+
+class OrgSetting(Base):
+    """One row. Business facts the organization owns — not deployment config,
+    so they live in the database and change without a deploy."""
+
+    __tablename__ = "org_setting"
+    id: Mapped[int] = mapped_column(SmallInteger, primary_key=True, default=1)
+    weekend_days: Mapped[list[int]] = mapped_column(ARRAY(SmallInteger))
+    stale_after_days: Mapped[int] = mapped_column(SmallInteger, default=3)
 
 
 class NonWorkingDay(Base):

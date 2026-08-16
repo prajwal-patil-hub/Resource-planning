@@ -40,6 +40,7 @@
     <span class="whoami-name">{{ me.name }}</span>
     <span class="whoami-role">{{ me.role.name }}</span>
   </span>
+  <a class="btn btn-sm" href="/absence">Absence</a>
   {% if can(me, Permission.MANAGE_PEOPLE) %}
   <a class="btn btn-sm" href="/people">People</a>
   {% endif %}
@@ -50,6 +51,7 @@
   <nav class="toggle" aria-label="View">
     <a href="/?view=board" {% if view == 'board' %}aria-current="page"{% endif %}>Board</a>
     <a href="/?view=table" {% if view == 'table' %}aria-current="page"{% endif %}>Table</a>
+    <a href="/?view=focus" {% if view == 'focus' %}aria-current="page"{% endif %}>Focus</a>
   </nav>
   <button class="btn btn-sm theme-btn" type="button" id="theme-toggle"
           aria-label="Switch between light and dark">

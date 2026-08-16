@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.access import Forbidden, Permission, can, require, visible_team_ids
 from app.auth import (
+    MAX_FAILED_LOGINS,
     SESSION_COOKIE,
     AuthError,
     anyone_can_sign_in,
@@ -31,9 +32,29 @@ from app.auth import (
 )
 from app.config import settings
 from app.db import get_session
+from app.flow.calendar import load_calendar
 from app.flow.load import load_for_team
+from app.people.absence import (
+    AbsenceError,
+    absences_for,
+    approve as approve_absence,
+    cancel as cancel_absence,
+    record_absence,
+    upcoming,
+    uncovered_work,
+)
 from app.flow.timeline import build_timeline, format_duration, state_label
-from app.models import Client, Person, Role, Team, WorkItem, WorkItemParticipant, WorkItemType
+from app.models import (
+    Absence,
+    Client,
+    NonWorkingDay,
+    Person,
+    Role,
+    Team,
+    WorkItem,
+    WorkItemParticipant,
+    WorkItemType,
+)
 from app.work.lifecycle import LABELS, OPEN_STATES, IllegalTransition, State
 from app.work.service import (
     EDITABLE,
@@ -379,10 +400,11 @@ SORTABLE = {
 #: would issue N queries for N rows; at a few thousand items that is the
 #: difference between a snappy screen and a slow one.
 TABLE_SQL = """
-SELECT w.id, w.title, w.state, w.priority, w.due_date,
+SELECT w.id, w.title, w.description, w.state, w.priority, w.due_date,
        wt.name AS type_name, c.name AS client_name,
-       p.name  AS assignee_name,
-       t.first_seen, t.last_moved
+       p.name  AS assignee_name, p.id AS assignee_id,
+       d.title AS displaced_by_title, w.displaced_by_id,
+       t.first_seen, t.last_moved, t.moves
 FROM work_item w
 LEFT JOIN work_item_type wt ON wt.id = w.type_id
 LEFT JOIN client c ON c.id = w.client_id
@@ -391,8 +413,11 @@ LEFT JOIN work_item_participant wip
       AND wip.participation = 'OWNER'
       AND wip.to_ts IS NULL
 LEFT JOIN person p ON p.id = wip.person_id
+LEFT JOIN work_item d ON d.id = w.displaced_by_id
 LEFT JOIN LATERAL (
-    SELECT min(occurred_at) AS first_seen, max(occurred_at) AS last_moved
+    SELECT min(occurred_at) AS first_seen,
+           max(occurred_at) AS last_moved,
+           count(*)         AS moves
     FROM state_transition WHERE work_item_id = w.id
 ) t ON true
 {where}
@@ -444,12 +469,17 @@ def _table_rows(
             {
                 "id": r["id"],
                 "title": r["title"],
+                "description": r["description"],
                 "state": r["state"],
                 "state_label": LABELS[State(r["state"])],
                 "priority": r["priority"],
                 "type_name": r["type_name"],
                 "client_name": r["client_name"],
                 "assignee_name": r["assignee_name"],
+                "assignee_id": r["assignee_id"],
+                "displaced_by_id": r["displaced_by_id"],
+                "displaced_by_title": r["displaced_by_title"],
+                "moves": r["moves"] or 0,
                 "due_date": r["due_date"],
                 "age": now - first_seen if first_seen else None,
                 "since_moved": now - last_moved if last_moved else None,
@@ -475,6 +505,7 @@ def page_board(
     view: str = "board",
     sort: str = "priority",
     dir: str = "asc",
+    state: str = "",
     team: list[int] = Query(default=[]),
     me: Person = Depends(signed_in),
     session: Session = Depends(get_session),
@@ -491,7 +522,7 @@ def page_board(
 
     common = {
         "me": me,
-        "view": view if view in ("board", "table") else "board",
+        "view": view if view in ("board", "table", "focus") else "board",
         "people": list(session.scalars(select(Person).where(Person.active.is_(True)).order_by(Person.name))),
         "types": list(session.scalars(select(WorkItemType).where(WorkItemType.active.is_(True)).order_by(WorkItemType.sort_order))),
         "clients": list(session.scalars(select(Client).where(Client.active.is_(True)).order_by(Client.name))),
@@ -502,6 +533,38 @@ def page_board(
         "selected_teams": set(team_ids) if not all_selected else set(),
         "all_teams": all_selected,
     }
+
+    if common["view"] == "focus":
+        # Focus mode: one state at a time, with everything about each item on
+        # the card. The board answers "where is everything"; this answers
+        # "what exactly is in this column, and what do I do about it".
+        chosen = state if state in [s.value for s in OPEN_STATES] else State.IN_PROGRESS.value
+        rows = _table_rows(
+            session, sort="priority", direction="asc",
+            include_closed=False, team_ids=team_ids,
+        )
+        counts = {}
+        for r in rows:
+            counts[r["state"]] = counts.get(r["state"], 0) + 1
+        return templates.TemplateResponse(
+            request,
+            "focus.html",
+            {
+                **common,
+                "chosen": chosen,
+                "chosen_label": LABELS[State(chosen)],
+                "rows": [r for r in rows if r["state"] == chosen],
+                "counts": counts,
+                "columns": [
+                    (s.value, LABELS[s], counts.get(s.value, 0))
+                    for s in [
+                        State.NEW, State.QUEUED, State.IN_PROGRESS,
+                        State.ON_HOLD_PREEMPTED, State.BLOCKED_ON_CLIENT,
+                        State.IN_VERIFICATION,
+                    ]
+                ],
+            },
+        )
 
     if common["view"] == "table":
         return templates.TemplateResponse(
@@ -967,3 +1030,208 @@ def do_reset_password(
         return RedirectResponse(f"/people?error={exc}", status_code=303)
     revoke_all_for(session, person.id)
     return RedirectResponse("/people?notice=Password reset. They must change it at next sign-in.", status_code=303)
+
+
+# --------------------------------------------------------------------------
+# Absence and the working calendar (BO-3, BR-012, BR-013, BR-014)
+# --------------------------------------------------------------------------
+
+
+@app.get("/absence", response_class=HTMLResponse)
+def page_absence(
+    request: Request,
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    calendar = load_calendar(session)
+    all_teams = list(session.scalars(select(Team).where(Team.active.is_(True))))
+    permitted = visible_team_ids(me, [t.id for t in all_teams])
+
+    return templates.TemplateResponse(
+        request,
+        "absence.html",
+        {
+            "me": me,
+            "calendar": calendar,
+            "mine": absences_for(session, me.id),
+            "upcoming": upcoming(session, team_ids=permitted or None),
+            # BO-3: this is the half that matters — not who is away, but whose
+            # client work is sitting still because they are.
+            "uncovered": uncovered_work(session, team_ids=permitted or None),
+            "people": list(
+                session.scalars(
+                    select(Person)
+                    .where(Person.active.is_(True))
+                    .order_by(Person.name)
+                )
+            ),
+            "holidays": list(
+                session.scalars(select(NonWorkingDay).order_by(NonWorkingDay.day.desc()))
+            ),
+            "can_approve": can(me, Permission.APPROVE_ABSENCE),
+            "can_manage": can(me, Permission.MANAGE_PEOPLE),
+            "error": request.query_params.get("error"),
+            "notice": request.query_params.get("notice"),
+        },
+    )
+
+
+@app.post("/absence")
+def do_record_absence(
+    person_id: int = Form(...),
+    start: str = Form(...),
+    end: str = Form(...),
+    kind: str = Form(default="LEAVE"),
+    note: str = Form(default=""),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    # Anyone may book their own time off; booking someone else's is a lead's job.
+    if person_id != me.id:
+        require(me, Permission.APPROVE_ABSENCE)
+    try:
+        record_absence(
+            session,
+            person_id=person_id,
+            start=date.fromisoformat(start),
+            end=date.fromisoformat(end),
+            kind=kind,
+            created_by=me,
+            note=note or None,
+            # A lead recording it has approved it by doing so; asking them to
+            # approve their own entry would be ceremony.
+            approved_by=me if can(me, Permission.APPROVE_ABSENCE) else None,
+        )
+    except (AbsenceError, ValueError) as exc:
+        return RedirectResponse(f"/absence?error={exc}", status_code=303)
+    return RedirectResponse("/absence?notice=Recorded.", status_code=303)
+
+
+@app.post("/absence/{absence_id}/approve")
+def do_approve_absence(
+    absence_id: int,
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    require(me, Permission.APPROVE_ABSENCE)
+    absence = session.get(Absence, absence_id)
+    if absence is None:
+        raise HTTPException(status_code=404, detail="No such absence")
+    try:
+        approve_absence(session, absence, me)
+    except AbsenceError as exc:
+        return RedirectResponse(f"/absence?error={exc}", status_code=303)
+    return RedirectResponse("/absence?notice=Approved.", status_code=303)
+
+
+@app.post("/absence/{absence_id}/cancel")
+def do_cancel_absence(
+    absence_id: int,
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    absence = session.get(Absence, absence_id)
+    if absence is None:
+        raise HTTPException(status_code=404, detail="No such absence")
+    if absence.person_id != me.id:
+        require(me, Permission.APPROVE_ABSENCE)
+    cancel_absence(session, absence, me)
+    return RedirectResponse("/absence?notice=Cancelled.", status_code=303)
+
+
+@app.post("/holidays")
+def do_add_holiday(
+    day: str = Form(...),
+    name: str = Form(...),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    require(me, Permission.MANAGE_PEOPLE)
+    try:
+        parsed = date.fromisoformat(day)
+    except ValueError:
+        return RedirectResponse("/absence?error=That date is not valid.", status_code=303)
+    if session.get(NonWorkingDay, parsed):
+        return RedirectResponse("/absence?error=That day is already a holiday.", status_code=303)
+    session.add(NonWorkingDay(day=parsed, name=name.strip() or "Holiday"))
+    return RedirectResponse("/absence?notice=Holiday added.", status_code=303)
+
+
+@app.post("/holidays/{day}/remove")
+def do_remove_holiday(
+    day: str,
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    require(me, Permission.MANAGE_PEOPLE)
+    holiday = session.get(NonWorkingDay, date.fromisoformat(day))
+    if holiday:
+        session.delete(holiday)
+    return RedirectResponse("/absence?notice=Holiday removed.", status_code=303)
+
+
+@app.post("/settings/working-week")
+def do_set_working_week(
+    weekend: list[int] = Form(default=[]),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    """The working week is a business fact, so it is editable without a deploy."""
+    require(me, Permission.MANAGE_PEOPLE)
+    from app.models import OrgSetting
+
+    setting = session.get(OrgSetting, 1)
+    if setting is None:
+        setting = OrgSetting(id=1, weekend_days=[6, 7], stale_after_days=3)
+        session.add(setting)
+    setting.weekend_days = sorted({d for d in weekend if 1 <= d <= 7})
+    return RedirectResponse("/absence?notice=Working week saved.", status_code=303)
+
+
+# --------------------------------------------------------------------------
+# Person settings (replaces the inline password row)
+# --------------------------------------------------------------------------
+
+
+@app.post("/people/{person_id}/sessions/revoke")
+def do_revoke_sessions(
+    person_id: int,
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    require(me, Permission.MANAGE_PEOPLE)
+    revoke_all_for(session, person_id)
+    return RedirectResponse("/people?notice=Signed out everywhere.", status_code=303)
+
+
+@app.post("/people/{person_id}/unlock")
+def do_unlock(
+    person_id: int,
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    require(me, Permission.MANAGE_PEOPLE)
+    person = session.get(Person, person_id)
+    if person is None:
+        raise HTTPException(status_code=404, detail="No such person")
+    person.locked_until = None
+    person.failed_logins = 0
+    return RedirectResponse("/people?notice=Unlocked.", status_code=303)
+
+
+@app.post("/people/{person_id}/force-change")
+def do_force_change(
+    person_id: int,
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    require(me, Permission.MANAGE_PEOPLE)
+    person = session.get(Person, person_id)
+    if person is None:
+        raise HTTPException(status_code=404, detail="No such person")
+    if not person.password_hash:
+        return RedirectResponse("/people?error=They have no login yet.", status_code=303)
+    person.must_change_password = True
+    return RedirectResponse(
+        "/people?notice=They must choose a new password at next sign-in.", status_code=303
+    )

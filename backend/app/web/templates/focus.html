@@ -1,0 +1,98 @@
+{% import "_shell.html" as shell %}
+{{ shell.head("Work Register — " + chosen_label) }}
+
+{# Focus mode.
+
+   The board answers "where is everything". This answers "what exactly is in
+   this column, and what do I do about it" — so the columns collapse into a
+   rail on the left, and the chosen state's items get the whole width with
+   every detail on the card instead of four lines of summary. #}
+
+<div class="shell">
+  {{ shell.topbar(view, me) }}
+  {{ shell.loadstrip(loads, teams, selected_teams, all_teams, view, 'priority', 'asc') }}
+
+  <main class="focus">
+    <nav class="rail glass anim-rise" style="animation-delay:80ms" aria-label="States">
+      <a class="rail-back" href="/?view=board">← Board</a>
+      {% for value, label, count in columns %}
+      <a class="rail-item {% if value == chosen %}on{% endif %}"
+         href="/?view=focus&state={{ value }}"
+         {% if value == chosen %}aria-current="page"{% endif %}>
+        <span class="dot {{ value | lower }}"></span>
+        <span class="rail-label">{{ label }}</span>
+        <span class="count">{{ count }}</span>
+      </a>
+      {% endfor %}
+    </nav>
+
+    <section class="focus-body">
+      <div class="focus-head">
+        <h2 class="focus-title">{{ chosen_label }}</h2>
+        <span class="fld-note" style="margin:0">
+          {{ rows | length }} item{{ '' if rows | length == 1 else 's' }}
+        </span>
+      </div>
+
+      <div class="focus-cards stagger">
+        {% for r in rows %}
+        <article class="focus-card glass-raised">
+          <div class="fc-top">
+            <span class="pri pri-{{ r.priority }}">P{{ r.priority }}</span>
+            <a class="fc-title" href="/items/{{ r.id }}">{{ r.title }}</a>
+            <span class="fc-id">#{{ r.id }}</span>
+          </div>
+
+          {% if r.description %}
+          <p class="fc-desc">{{ r.description }}</p>
+          {% endif %}
+
+          <div class="fc-facts">
+            <span class="fc-fact">
+              {% if r.assignee_name %}
+              <span class="avatar" aria-hidden="true">{{ r.assignee_name[:1] | upper }}</span>{{ r.assignee_name }}
+              {% else %}
+              <span class="unowned">Nobody owns this</span>
+              {% endif %}
+            </span>
+            {% if r.type_name %}<span class="fc-fact">{{ r.type_name }}</span>{% endif %}
+            {% if r.client_name %}<span class="fc-fact">{{ r.client_name }}</span>{% endif %}
+            <span class="fc-fact" title="Since it was first recorded">
+              {{ r.age | duration if r.age else '—' }} old
+            </span>
+            <span class="fc-fact {% if r.stale %}stale-flag{% endif %}"
+                  title="Since the last state change">
+              {{ r.since_moved | duration if r.since_moved else '—' }} since it moved
+              {%- if r.stale %} · stalled{% endif %}
+            </span>
+            {% if r.moves %}<span class="fc-fact">{{ r.moves }} change{{ '' if r.moves == 1 else 's' }}</span>{% endif %}
+            {% if r.due_date %}
+            <span class="fc-fact {% if r.overdue %}overdue-flag{% endif %}">
+              Due {{ r.due_date.strftime('%d %b') }}{% if r.overdue %} · overdue{% endif %}
+            </span>
+            {% endif %}
+          </div>
+
+          {# BO-4: on the hold column this is the whole point of the card. #}
+          {% if r.displaced_by_id %}
+          <p class="fc-displaced">
+            Set aside for
+            <a href="/items/{{ r.displaced_by_id }}">#{{ r.displaced_by_id }} {{ r.displaced_by_title }}</a>
+          </p>
+          {% endif %}
+
+          <div class="fc-actions">
+            <a class="btn btn-sm" href="/items/{{ r.id }}">Open</a>
+          </div>
+        </article>
+        {% else %}
+        <p class="empty">Nothing in {{ chosen_label | lower }}.</p>
+        {% endfor %}
+      </div>
+    </section>
+  </main>
+</div>
+
+{{ shell.composer(people, types, view) }}
+</body>
+</html>
