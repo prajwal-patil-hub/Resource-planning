@@ -180,6 +180,53 @@ def assign(
     return participant
 
 
+#: Fields a user may change after creation. Deliberately narrow: state is not
+#: here (it moves only through `transition`), and neither are created_by or
+#: created_at, which are facts about what happened rather than editable data.
+EDITABLE = ("title", "description", "type_id", "client_id", "priority", "due_date")
+
+
+def update_work_item(
+    session: Session,
+    *,
+    item: WorkItem,
+    actor_id: int,
+    changes: dict,
+) -> WorkItem:
+    """Fill in or correct a work item after it was recorded.
+
+    D-005 promises that a title alone is enough to save, and everything else can
+    be added later. This is "later". Without it the promise is unkeepable and
+    the field-history trigger from ADR-003 can never fire.
+
+    Field history is captured by a database trigger, not here — a log the
+    application writes is only as complete as the code paths that remember to
+    call it, and this will not be the only path forever.
+    """
+    unknown = set(changes) - set(EDITABLE)
+    if unknown:
+        raise WorkItemError(f"Not editable: {', '.join(sorted(unknown))}")
+
+    if "title" in changes:
+        title = (changes["title"] or "").strip()
+        if not title:
+            raise WorkItemError("A work item needs a title.")
+        changes["title"] = title
+
+    if "priority" in changes and changes["priority"] is not None:
+        if not 0 <= int(changes["priority"]) <= 4:
+            raise WorkItemError("Priority must be between P0 and P4.")
+
+    _set_actor(session, actor_id)
+
+    for field, value in changes.items():
+        setattr(item, field, value)
+
+    # Flush inside the actor setting so the trigger sees who made the change.
+    session.flush()
+    return item
+
+
 def transition(
     session: Session,
     *,

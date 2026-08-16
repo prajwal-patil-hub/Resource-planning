@@ -17,7 +17,7 @@ from fastapi import Depends, FastAPI, Form, Header, HTTPException, Query, Reques
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
@@ -28,11 +28,13 @@ from app.flow.timeline import build_timeline, format_duration, state_label
 from app.models import Client, Person, Team, WorkItem, WorkItemParticipant, WorkItemType
 from app.work.lifecycle import LABELS, OPEN_STATES, IllegalTransition, State
 from app.work.service import (
+    EDITABLE,
     WorkItemError,
     assign,
     create_work_item,
     current_owner,
     transition,
+    update_work_item,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -177,6 +179,46 @@ def api_assign(
         raise HTTPException(status_code=404, detail="No such work item")
     try:
         assign(session, item=item, person_id=person_id, actor_id=actor_id)
+    except WorkItemError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _to_out(session, item)
+
+
+class UpdateWorkItem(BaseModel):
+    """Every field optional — a partial update changes only what is sent.
+
+    `extra="forbid"` so a caller that tries to set `state` here is told no,
+    rather than getting a 200 and silently having it ignored. State moves only
+    through /transition, which records an event.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str | None = Field(default=None, max_length=500)
+    description: str | None = None
+    type_id: int | None = None
+    client_id: int | None = None
+    priority: int | None = Field(default=None, ge=0, le=4)
+    due_date: date | None = None
+
+
+@app.patch("/api/work-items/{item_id}", response_model=WorkItemOut)
+def api_update(
+    item_id: int,
+    payload: UpdateWorkItem,
+    session: Session = Depends(get_session),
+    actor_id: int = Depends(actor),
+) -> WorkItemOut:
+    item = session.get(WorkItem, item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="No such work item")
+    # exclude_unset distinguishes "set this to null" from "leave it alone" —
+    # without it, every PATCH would silently clear the fields it omitted.
+    changes = payload.model_dump(exclude_unset=True)
+    if not changes:
+        return _to_out(session, item)
+    try:
+        update_work_item(session, item=item, actor_id=actor_id, changes=changes)
     except WorkItemError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return _to_out(session, item)
@@ -519,6 +561,8 @@ def page_item(item_id: int, request: Request, session: Session = Depends(get_ses
                 )
             ),
             "people": list(session.scalars(select(Person).where(Person.active.is_(True)).order_by(Person.name))),
+            "types": list(session.scalars(select(WorkItemType).where(WorkItemType.active.is_(True)).order_by(WorkItemType.sort_order))),
+            "clients": list(session.scalars(select(Client).where(Client.active.is_(True)).order_by(Client.name))),
         },
     )
 
@@ -545,6 +589,41 @@ def page_transition(
             note=note or None,
         )
     except (WorkItemError, IllegalTransition) as exc:
+        return RedirectResponse(f"/items/{item_id}?error={exc}", status_code=303)
+    return RedirectResponse(f"/items/{item_id}", status_code=303)
+
+
+@app.post("/items/{item_id}/edit")
+def page_edit(
+    item_id: int,
+    title: str = Form(...),
+    description: str = Form(default=""),
+    type_id: str = Form(default=""),
+    client_id: str = Form(default=""),
+    priority: int = Form(default=2),
+    due_date: str = Form(default=""),
+    session: Session = Depends(get_session),
+    actor_id: int = Depends(actor),
+):
+    """Fill in the details that were skipped at record time (D-005)."""
+    item = session.get(WorkItem, item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="No such work item")
+    try:
+        update_work_item(
+            session,
+            item=item,
+            actor_id=actor_id,
+            changes={
+                "title": title,
+                "description": description or None,
+                "type_id": int(type_id) if type_id else None,
+                "client_id": int(client_id) if client_id else None,
+                "priority": priority,
+                "due_date": date.fromisoformat(due_date) if due_date else None,
+            },
+        )
+    except (WorkItemError, ValueError) as exc:
         return RedirectResponse(f"/items/{item_id}?error={exc}", status_code=303)
     return RedirectResponse(f"/items/{item_id}", status_code=303)
 

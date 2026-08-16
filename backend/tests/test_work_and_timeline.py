@@ -296,3 +296,64 @@ def test_durations_do_not_imply_false_precision(delta, expected):
     """Nobody needs '3 days, 4 hours and 17 minutes' — and stating it would
     imply a measurement accuracy this system does not have."""
     assert format_duration(delta) == expected
+
+
+# --------------------------------------------------------------------------
+# Editing after creation (D-005: "everything else can be filled in later")
+# --------------------------------------------------------------------------
+
+
+def test_details_can_be_filled_in_after_recording(session, person):
+    """The whole composer design rests on this being possible."""
+    from app.work.service import update_work_item
+
+    item = create_work_item(session, title="Client rang about something", created_by_id=person.id)
+    assert item.type_id is None and item.priority == 2
+
+    update_work_item(
+        session,
+        item=item,
+        actor_id=person.id,
+        changes={"title": "Acme: export drops the totals row", "priority": 1},
+    )
+
+    assert item.title == "Acme: export drops the totals row"
+    assert item.priority == 1
+
+
+def test_edits_appear_in_the_field_history(session, person):
+    """ADR-003 layer 2. Before edit existed this trigger could never fire."""
+    from app.work.service import update_work_item
+
+    item = create_work_item(session, title="Wrong title", created_by_id=person.id)
+    update_work_item(
+        session, item=item, actor_id=person.id,
+        changes={"title": "Right title", "priority": 0},
+    )
+
+    tl = build_timeline(session, item.id)
+    changed = {c.field: (c.old_value, c.new_value) for c in tl.field_changes}
+
+    assert changed["title"] == ("Wrong title", "Right title")
+    assert changed["priority"] == ("2", "0")
+    assert all(c.changed_by_id == person.id for c in tl.field_changes)
+
+
+def test_state_cannot_be_changed_through_the_edit_path(session, person):
+    """State moves only through `transition`, which records an event. An edit
+    path that could set it would bypass the entire audit trail."""
+    from app.work.service import update_work_item
+
+    item = create_work_item(session, title="Sneaky", created_by_id=person.id)
+
+    with pytest.raises(WorkItemError, match="Not editable"):
+        update_work_item(session, item=item, actor_id=person.id, changes={"state": "DONE"})
+
+
+def test_title_cannot_be_edited_to_blank(session, person):
+    from app.work.service import update_work_item
+
+    item = create_work_item(session, title="Has a title", created_by_id=person.id)
+
+    with pytest.raises(WorkItemError, match="needs a title"):
+        update_work_item(session, item=item, actor_id=person.id, changes={"title": "   "})

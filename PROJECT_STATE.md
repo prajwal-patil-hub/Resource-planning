@@ -238,6 +238,12 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 
 ---
 
+## BUILD COMPLETENESS
+
+**~45% of the v1 BRD scope.** Full requirement-by-requirement audit in
+`docs/14-build-status.md`. 11 requirements built, 6 partial, 8 not built.
+Five of seven designed domain services are unwritten.
+
 ## KNOWN GAPS IN THE BUILD
 
 - **No authentication.** `X-Actor-Id` header stands in for the signed-in user so
@@ -245,11 +251,28 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
   Must exist before real use.
 - **Permissions not enforced.** ADR-002 defines the model; `access` is a stub.
 - Background image not chosen — one CSS property, deliberately deferred.
+- No absence entry, so the load strip's "away" state can never appear (BO-3
+  entirely unmet).
+- No stalled-work surfacing beyond a flag in the table (BO-2 partial).
+- No forecasting or risk detection (BO-6 entirely unmet).
+- Weekends and holidays are not excluded from durations.
 
 ## NEXT ACTION
 
-1. **Confirm the light theme and team filter**, then choose Feature 2.
-2. **Pitch it.** Still outstanding after four phases. ASM-2 remains the only
-   assumption whose failure ends the project.
-3. Choose Feature 2 — recommended: **authentication and people management**,
-   because every record currently claims to be created by person #1.
+Stakeholder decision recorded 2026-08-16: **the pitch happens once the product
+is complete enough to justify a manager's time.** ASM-2 stays open and
+load-bearing by informed choice, not oversight.
+
+Ordered build plan in `docs/14-build-status.md`:
+
+1. ~~Edit a work item~~ — **DONE 2026-08-16**
+2. **Authentication and people management** ← next
+3. Absence and non-working days
+4. Attention view (stalled, unowned, uncovered)
+5. Flow statistics and risk
+6. Reporting by client and type
+7. Reference data management
+8. Search
+9. Deployment, backups, restore
+
+Items 1–4 are what a pilot needs. 5–6 are what make it worth keeping.

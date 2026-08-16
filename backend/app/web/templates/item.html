@@ -59,6 +59,57 @@
         </p>
         {% endif %}
 
+        {# D-005 promised a title alone is enough to save, and that everything
+           else could be filled in later. This is "later". Collapsed by default
+           so it never competes with the states, which are the daily action. #}
+        <details class="edit-block">
+          <summary>Edit details</summary>
+          <form class="edit-form" method="post" action="/items/{{ item.id }}/edit">
+            <label class="fld">
+              <span>Title</span>
+              <input type="text" name="title" value="{{ item.title }}" required />
+            </label>
+            <label class="fld">
+              <span>Description</span>
+              <textarea name="description" rows="2">{{ item.description or '' }}</textarea>
+            </label>
+            <div class="fld-row">
+              <label class="fld">
+                <span>Type</span>
+                <select name="type_id">
+                  <option value="">—</option>
+                  {% for t in types %}
+                  <option value="{{ t.id }}" {% if item.type_id == t.id %}selected{% endif %}>{{ t.name }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label class="fld">
+                <span>Client</span>
+                <select name="client_id">
+                  <option value="">—</option>
+                  {% for c in clients %}
+                  <option value="{{ c.id }}" {% if item.client_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label class="fld">
+                <span>Priority</span>
+                <select name="priority">
+                  {% for p in [0,1,2,3,4] %}
+                  <option value="{{ p }}" {% if item.priority == p %}selected{% endif %}>P{{ p }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label class="fld">
+                <span>Due date <em>(client-given)</em></span>
+                <input type="date" name="due_date" value="{{ item.due_date or '' }}" />
+              </label>
+            </div>
+            <button class="btn btn-sm" type="submit">Save details</button>
+            <p class="fld-note">Every change is recorded in the field history below.</p>
+          </form>
+        </details>
+
         {% if allowed %}
         <form class="form-row" method="post" action="/items/{{ item.id }}/assign">
           <select name="person_id" required aria-label="Assign to">

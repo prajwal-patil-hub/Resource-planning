@@ -1099,3 +1099,65 @@ table.hist td:first-child { color: var(--text); }
    within the strip. */
 .loads { position: relative; z-index: 20; }
 .board, .table-wrap { position: relative; z-index: 1; }
+
+/* ==========================================================================
+   Inline edit block on the item page
+   ========================================================================== */
+
+.edit-block { margin-top: 12px; }
+
+.edit-block summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.79rem;
+  color: var(--text-3);
+  padding: 5px 0;
+  transition: color var(--dur) var(--ease);
+}
+
+.edit-block summary::-webkit-details-marker { display: none; }
+.edit-block summary::before { content: "✎"; font-size: 0.85rem; }
+.edit-block summary:hover { color: var(--text); }
+.edit-block summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 11px;
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  background: var(--glass-fill-sunk);
+  border: 1px solid var(--glass-border-soft);
+  animation: settle-in 240ms var(--ease) both;
+}
+
+.fld { display: flex; flex-direction: column; gap: 4px; flex: 1 1 130px; min-width: 0; }
+
+.fld > span {
+  font-size: 0.67rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.fld > span em { font-style: normal; text-transform: none; letter-spacing: 0; opacity: 0.75; }
+
+.fld input[type="date"] {
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  color: var(--text);
+  background: var(--glass-fill-sunk);
+  border: 1px solid var(--glass-border-soft);
+  border-radius: var(--radius-sm);
+  padding: 8px 11px;
+}
+
+.fld-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.fld-note { font-size: 0.71rem; color: var(--text-3); margin: 2px 0 0; }
+
+.edit-form .btn { align-self: flex-start; }
