@@ -10,7 +10,7 @@
 
 ## CURRENT PHASE
 
-**Phase 4 — Implementation.** Features 1–3 built and running. 85 tests.
+**Phase 4 — Implementation.** Features 1–4 built and running. 105 tests.
 
 ## CURRENT OBJECTIVE
 
@@ -198,8 +198,22 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
   "what is in this column and what do I do about it".
 - D-028: **The working week lives in the database, not configuration.** It is a
   business fact the organization owns and must change without a deploy.
-  **TO VALIDATE:** assumed Sat + Sun; the stakeholder has not confirmed whether
-  this team works Saturdays.
+  **RESOLVED 2026-08-16:** the team works Saturdays optionally. Sunday is never
+  worked; Saturday is an optional day. See D-029.
+- D-029: **A day has three states, not two: worked, optional, never.** The team
+  works Saturdays sometimes. Counting Saturday as working punishes everyone who
+  did not come in; counting it as non-working erases the work of whoever did.
+  An optional day counts only on the dates when work was actually recorded —
+  **derived from the event log, not asked for** (ADR-001), and resolved per
+  person so one person's Saturday never counts against a colleague's.
+- D-030: **Timestamp-to-date casts are pinned to UTC.** `occurred_at::date` on a
+  timestamptz depends on the session timezone, so it is not immutable, cannot be
+  indexed, and would make two differently-configured servers disagree about
+  which day work happened on.
+- D-031: **Everything on an action list must need action.** The attention view
+  excludes client-blocked work from stalled and uncovered, and only flags
+  at-risk items while there is still time to act. One item that does not belong
+  teaches people to skim, and a list people skim is worse than no list.
 - D-013: **Optimistic locking** for concurrent edits to one work item.
   Notably *not* needed for concurrent assignment — nothing is reserved under
   ADR-001, so two assignments simply show as higher load, which is accurate.
@@ -254,9 +268,9 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 
 ## BUILD COMPLETENESS
 
-**~72% of the v1 BRD scope.** BR-012, BR-013, BR-014 and BR-016 now built;
-BO-3 fully met. Remaining: BR-017/BR-018 (risk and forecasting), BR-019
-(reporting), and the surfacing half of BR-007. Full requirement-by-requirement audit in
+**~84% of the v1 BRD scope.** BR-007 and BR-017 now built; BO-2 and BO-3 fully
+met. Remaining: BR-018 (probability ranges — needs history) and BR-019
+(reporting by client and type). Full requirement-by-requirement audit in
 `docs/14-build-status.md`. 11 requirements built, 6 partial, 8 not built.
 Five of seven designed domain services are unwritten.
 
@@ -284,9 +298,10 @@ Ordered build plan in `docs/14-build-status.md`:
 1. ~~Edit a work item~~ — **DONE 2026-08-16**
 2. ~~Authentication and people management~~ — **DONE 2026-08-16**
 3. ~~Absence and non-working days~~ — **DONE 2026-08-16**
-4. **Attention view (stalled, unowned, uncovered)** ← next
-   — the uncovered half already exists on /absence
-5. Flow statistics and risk
+4. ~~Attention view~~ — **DONE 2026-08-16** (/attention)
+5. **Flow statistics and forecasting** ← next
+   (BR-017 risk is partly done — "due soon and not started" is live;
+   BR-018 probability ranges still need history)
 6. Reporting by client and type
 7. Reference data management
 8. Search

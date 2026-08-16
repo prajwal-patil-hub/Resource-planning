@@ -1,0 +1,76 @@
+{% import "_shell.html" as shell %}
+{{ shell.head("What needs me") }}
+
+{% macro group(title, flags, note) %}
+{% if flags %}
+<section class="panel glass anim-rise">
+  <h2>{{ title }} <span class="count">{{ flags | length }}</span></h2>
+  <p class="fld-note" style="margin:-6px 0 12px">{{ note }}</p>
+  <div class="flag-list">
+    {% for f in flags %}
+    <a class="flag glass-raised sev-{{ f.severity }}" href="/items/{{ f.item.id }}">
+      <span class="pri pri-{{ f.item.priority }}">P{{ f.item.priority }}</span>
+      <span class="flag-title">{{ f.item.title }}</span>
+      {% if f.owner_name %}
+      <span class="assignee"><span class="avatar" aria-hidden="true">{{ f.owner_name[:1] | upper }}</span>{{ f.owner_name }}</span>
+      {% else %}
+      <span class="unowned">Unassigned</span>
+      {% endif %}
+      {# BR-020: the reason travels with the flag, always. #}
+      <span class="flag-why">{{ f.why }} · <b>{{ f.measure }}</b></span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endmacro %}
+
+<div class="shell" style="padding-bottom:40px">
+  {{ shell.topbar('attention', me) }}
+
+  <section class="attention-head glass anim-rise" style="animation-delay:50ms">
+    {% if attention.total %}
+    <h1 class="att-count">{{ attention.total }}</h1>
+    <div>
+      <p class="att-lead">
+        thing{{ '' if attention.total == 1 else 's' }} need attention
+        {% if attention.act_now %}
+        · <strong style="color:var(--stop)">{{ attention.act_now }} now</strong>
+        {% endif %}
+      </p>
+      <p class="fld-note" style="margin:2px 0 0">
+        Anything already waiting on a client is left out — it is not stalled by us.
+      </p>
+    </div>
+    {% else %}
+    <h1 class="att-count" style="color:var(--ok)">✓</h1>
+    <div>
+      <p class="att-lead">Nothing needs you</p>
+      <p class="fld-note" style="margin:2px 0 0">
+        Everything open has an owner, is moving, and is inside its date.
+      </p>
+    </div>
+    {% endif %}
+  </section>
+
+  {{ group('Nobody owns this', attention.unowned,
+           'Recorded but never picked up. This is the failure the product was built for.') }}
+  {{ group('Overdue', attention.overdue,
+           'Past the date the client was given.') }}
+  {{ group('Going to miss its date', attention.at_risk,
+           'Due within two working days and not started. Flagged while there is still time to act.') }}
+  {{ group('Stopped moving', attention.stalled,
+           'No state change for ' ~ stale_after_days ~ '+ working days. Weekends and holidays do not count.') }}
+  {{ group('Owner is away', attention.uncovered,
+           'Open work whose owner is on leave today.') }}
+
+  {% if not attention.total %}
+  <p class="fld-note" style="max-width:64ch">
+    This screen stays empty most days. That is the point — it exists so nobody
+    has to scan the board looking for problems, and an empty list is a real
+    answer rather than a missing one.
+  </p>
+  {% endif %}
+</div>
+</body>
+</html>

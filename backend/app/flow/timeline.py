@@ -22,7 +22,7 @@ from app.models import (
     WorkItemAudit,
     WorkItemParticipant,
 )
-from app.flow.calendar import WorkingCalendar, working_duration
+from app.flow.calendar import WorkingCalendar, resolve_optional_days, working_duration
 from app.work.lifecycle import CLOCK_STOPPED, LABELS, TERMINAL, State
 
 
@@ -151,6 +151,22 @@ def build_timeline(
     # time wrong, and in the worst case negative. Same class of mistake as
     # measuring cycle time from recorded_at.
     started_at = transitions[0].occurred_at if transitions else item.created_at
+
+    # Resolve optional days (e.g. Saturdays) against the people who actually
+    # touched this item. One person coming in on a Saturday must not make that
+    # Saturday count against a colleague who did not.
+    involved = {t.changed_by_id for t in transitions}
+    involved.update(
+        session.scalars(
+            select(WorkItemParticipant.person_id).where(
+                WorkItemParticipant.work_item_id == work_item_id
+            )
+        ).all()
+    )
+    calendar = resolve_optional_days(
+        session, calendar, started_at.date(), now.date(),
+        person_ids=sorted(involved) or None,
+    )
 
     timeline = ItemTimeline(
         item_id=item.id,

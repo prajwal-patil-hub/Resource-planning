@@ -32,6 +32,7 @@ from app.auth import (
 )
 from app.config import settings
 from app.db import get_session
+from app.flow.attention import build_attention
 from app.flow.calendar import load_calendar
 from app.flow.load import load_for_team
 from app.people.absence import (
@@ -1171,20 +1172,35 @@ def do_remove_holiday(
 
 
 @app.post("/settings/working-week")
-def do_set_working_week(
-    weekend: list[int] = Form(default=[]),
+async def do_set_working_week(
+    request: Request,
     me: Person = Depends(signed_in),
     session: Session = Depends(get_session),
 ):
-    """The working week is a business fact, so it is editable without a deploy."""
+    """The working week is a business fact, so it is editable without a deploy.
+
+    Three states per day rather than a checkbox: a day the team sometimes works
+    is neither worked nor not worked, and forcing it into a boolean makes every
+    duration on that day wrong in one direction or the other.
+    """
     require(me, Permission.MANAGE_PEOPLE)
     from app.models import OrgSetting
 
+    form = await request.form()
+    never, optional = [], []
+    for day in range(1, 8):
+        choice = form.get(f"day{day}", "worked")
+        if choice == "never":
+            never.append(day)
+        elif choice == "optional":
+            optional.append(day)
+
     setting = session.get(OrgSetting, 1)
     if setting is None:
-        setting = OrgSetting(id=1, weekend_days=[6, 7], stale_after_days=3)
+        setting = OrgSetting(id=1, weekend_days=[7], optional_days=[6], stale_after_days=3)
         session.add(setting)
-    setting.weekend_days = sorted({d for d in weekend if 1 <= d <= 7})
+    setting.weekend_days = never
+    setting.optional_days = optional
     return RedirectResponse("/absence?notice=Working week saved.", status_code=303)
 
 
@@ -1234,4 +1250,43 @@ def do_force_change(
     person.must_change_password = True
     return RedirectResponse(
         "/people?notice=They must choose a new password at next sign-in.", status_code=303
+    )
+
+
+# --------------------------------------------------------------------------
+# Attention — what needs someone today (BR-007, BO-2)
+# --------------------------------------------------------------------------
+
+
+@app.get("/attention", response_class=HTMLResponse)
+def page_attention(
+    request: Request,
+    team: list[int] = Query(default=[]),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    all_teams = list(session.scalars(select(Team).where(Team.active.is_(True)).order_by(Team.name)))
+    permitted = set(visible_team_ids(me, [t.id for t in all_teams]))
+    teams = [t for t in all_teams if t.id in permitted]
+    team_ids = _selected_team_ids(team, teams)
+
+    from app.models import OrgSetting
+
+    setting = session.get(OrgSetting, 1)
+    attention = build_attention(
+        session,
+        calendar=load_calendar(session),
+        team_ids=team_ids,
+        stale_after_days=setting.stale_after_days if setting else settings.stale_after_days,
+    )
+    return templates.TemplateResponse(
+        request,
+        "attention.html",
+        {
+            "me": me,
+            "view": "attention",
+            "attention": attention,
+            "loads": load_for_team(session, team_ids=team_ids),
+            "stale_after_days": setting.stale_after_days if setting else settings.stale_after_days,
+        },
     )

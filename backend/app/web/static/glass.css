@@ -1500,3 +1500,81 @@ dialog.sheet[open] { animation: rise-in 240ms var(--ease) both; }
 
 .day-opt:hover { border-color: var(--glass-border); }
 .day-opt input { accent-color: var(--risk); }
+
+/* Working-week picker: three states per day, so "sometimes worked" is
+   expressible rather than forced into a checkbox. */
+.week-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-bottom: 10px; }
+
+.week-table th {
+  font-size: 0.65rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  font-weight: 600;
+  padding: 6px 8px;
+  text-align: center;
+}
+
+.week-table th:first-child { text-align: left; }
+.week-table td { padding: 5px 8px; text-align: center; border-top: 1px solid var(--rule); }
+.week-table .week-day { text-align: left; color: var(--text); }
+.week-radio { display: inline-flex; cursor: pointer; padding: 4px; }
+.week-radio input { accent-color: var(--ok); width: 15px; height: 15px; cursor: pointer; }
+
+/* ==========================================================================
+   Attention — what needs someone today
+   ========================================================================== */
+
+.attention-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 20px 24px;
+}
+
+.att-count {
+  font-family: var(--mono);
+  font-size: 2.6rem;
+  line-height: 1;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.att-lead { font-size: 1rem; color: var(--text); margin: 0; }
+
+.flag-list { display: flex; flex-direction: column; gap: 8px; }
+
+.flag {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  text-decoration: none;
+  color: inherit;
+  border-left: 3px solid var(--text-3);
+  transition: transform 140ms var(--ease), border-color 140ms var(--ease);
+}
+
+@media (max-width: 760px) {
+  .flag { grid-template-columns: auto minmax(0, 1fr); }
+}
+
+.flag:hover { transform: translateX(2px); border-color: var(--glass-border); }
+.flag.sev-0 { border-left-color: var(--stop); }
+.flag.sev-1 { border-left-color: var(--warn); }
+.flag.sev-2 { border-left-color: var(--info); }
+
+.flag-title {
+  font-size: 0.88rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flag-why { font-size: 0.75rem; color: var(--text-3); white-space: nowrap; }
+.flag-why b { color: var(--text-2); font-weight: 600; }
+
+.panel h2 .count { margin-left: 7px; }

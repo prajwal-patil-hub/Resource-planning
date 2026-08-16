@@ -1,7 +1,7 @@
 """Absence, the working calendar, and cover detection (BO-3, BR-012..BR-014)."""
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
 import pytest
 
@@ -235,3 +235,93 @@ def test_upcoming_absence_is_listed_within_the_horizon(session, person, other_pe
     ids = [a.person_id for a in upcoming(session, within_days=14)]
     assert person.id in ids
     assert other_person.id not in ids
+
+
+# --------------------------------------------------------------------------
+# Optional working days (Saturdays that are sometimes worked)
+# --------------------------------------------------------------------------
+
+
+def test_an_optional_day_does_not_count_when_nobody_worked(session, person):
+    """Saturday counted as a working day would punish everyone who did not
+    come in."""
+    from app.flow.calendar import WorkingCalendar
+
+    calendar = WorkingCalendar(
+        weekend_days=frozenset({7}), optional_days=frozenset({6}), holidays=frozenset()
+    )
+    saturday = date(2026, 9, 5)
+    assert saturday.isoweekday() == 6
+    assert not calendar.is_working_day(saturday)
+    assert calendar.day_kind(saturday) == "optional — not worked"
+
+
+def test_an_optional_day_counts_once_work_is_recorded_on_it(session, person):
+    """And treating it as non-working would erase the work of whoever did."""
+    from app.flow.calendar import WorkingCalendar
+
+    calendar = WorkingCalendar(
+        weekend_days=frozenset({7}), optional_days=frozenset({6}), holidays=frozenset()
+    )
+    saturday = date(2026, 9, 5)
+
+    worked = calendar.with_worked_days({saturday})
+    assert worked.is_working_day(saturday)
+    assert worked.day_kind(saturday) == "optional — worked"
+
+
+def test_a_worked_saturday_is_derived_from_the_event_log(session, person, other_person):
+    """ADR-001 applied: nobody ticks "we worked this Saturday" — the answer is
+    already in the transitions people produce by working."""
+    from app.flow.calendar import WorkingCalendar, resolve_optional_days
+
+    # Find a Saturday in the recent past, so the no-future-dating guard allows it.
+    saturday = date.today() - timedelta(days=1)
+    while saturday.isoweekday() != 6:
+        saturday -= timedelta(days=1)
+
+    base = WorkingCalendar(
+        weekend_days=frozenset({7}), optional_days=frozenset({6}), holidays=frozenset()
+    )
+    span_start, span_end = saturday - timedelta(days=3), saturday + timedelta(days=1)
+
+    # Nothing recorded yet.
+    quiet = resolve_optional_days(session, base, span_start, span_end)
+    assert not quiet.is_working_day(saturday)
+
+    # Someone works that Saturday.
+    item = create_work_item(
+        session, title="Weekend fix", created_by_id=person.id,
+        occurred_at=datetime.combine(saturday, time(10, 0), tzinfo=UTC),
+    )
+    assign(session, item=item, person_id=person.id, actor_id=person.id)
+
+    busy = resolve_optional_days(session, base, span_start, span_end)
+    assert busy.is_working_day(saturday)
+
+
+def test_one_persons_saturday_does_not_count_against_a_colleague(session, person, other_person):
+    """The fairness rule. Whoever came in gets credit; whoever did not is not
+    charged for the day."""
+    from app.flow.calendar import WorkingCalendar, resolve_optional_days
+
+    saturday = date.today() - timedelta(days=1)
+    while saturday.isoweekday() != 6:
+        saturday -= timedelta(days=1)
+
+    base = WorkingCalendar(
+        weekend_days=frozenset({7}), optional_days=frozenset({6}), holidays=frozenset()
+    )
+    span = (saturday - timedelta(days=3), saturday + timedelta(days=1))
+
+    item = create_work_item(
+        session, title="Came in on Saturday", created_by_id=person.id,
+        occurred_at=datetime.combine(saturday, time(10, 0), tzinfo=UTC),
+    )
+    assign(session, item=item, person_id=person.id, actor_id=person.id)
+
+    worked = resolve_optional_days(session, base, *span, person_ids=[person.id])
+    rested = resolve_optional_days(session, base, *span, person_ids=[other_person.id])
+
+    assert worked.is_working_day(saturday)
+    assert not rested.is_working_day(saturday)

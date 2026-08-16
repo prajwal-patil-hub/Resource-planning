@@ -149,7 +149,10 @@ class OrgSetting(Base):
 
     __tablename__ = "org_setting"
     id: Mapped[int] = mapped_column(SmallInteger, primary_key=True, default=1)
+    #: Never worked.
     weekend_days: Mapped[list[int]] = mapped_column(ARRAY(SmallInteger))
+    #: Worked only on dates where activity was actually recorded.
+    optional_days: Mapped[list[int]] = mapped_column(ARRAY(SmallInteger))
     stale_after_days: Mapped[int] = mapped_column(SmallInteger, default=3)
 
 
