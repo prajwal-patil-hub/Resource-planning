@@ -14,11 +14,13 @@
 
 ## CURRENT OBJECTIVE
 
-Review Feature 1 (record a work item + audit trail + time-in-state report).
-Then choose Feature 2.
+Close the recording-context gap (BR-004 backdating, BR-016 assign-time load),
+then flow statistics and forecasting (BR-018) — the last unmet business
+objective, BO-6.
 
-**Status:** 33 tests passing against real PostgreSQL 16. App runs, board and
-item timeline verified by screenshot.
+**Status:** 105 tests passing against real PostgreSQL 16. ~80% of v1 scope;
+17 of 25 business requirements built, 6 partial, 2 unbuilt. Full audit in
+`docs/14-build-status.md`.
 
 ---
 
