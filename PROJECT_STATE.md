@@ -10,7 +10,7 @@
 
 ## CURRENT PHASE
 
-**Phase 4 — Implementation.** Feature 1 built and running.
+**Phase 4 — Implementation.** Features 1–3 built and running. 85 tests.
 
 ## CURRENT OBJECTIVE
 
@@ -186,6 +186,20 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
   white inner glows are invisible; depth comes from soft dark inner shadows plus
   a bright top highlight. Semantic colours are re-tuned for contrast, which is
   why they were kept separate from the glass palette.
+- D-025: **Calendar time and working time are both reported, not one or the
+  other.** Calendar elapsed is what the client waited; working elapsed excludes
+  weekends and holidays and is what we answer for. Reporting only the first
+  makes the team look slow; only the second hides how long the client waited.
+- D-026: **Lists that demand action must contain nothing else.** The team
+  filter never hides unowned work; cover detection never flags client-blocked
+  work. Noise destroys the reason either list exists.
+- D-027: **Focus mode** — board columns collapse to a left rail and one state
+  gets the full width. The board answers "where is everything"; focus answers
+  "what is in this column and what do I do about it".
+- D-028: **The working week lives in the database, not configuration.** It is a
+  business fact the organization owns and must change without a deploy.
+  **TO VALIDATE:** assumed Sat + Sun; the stakeholder has not confirmed whether
+  this team works Saturdays.
 - D-013: **Optimistic locking** for concurrent edits to one work item.
   Notably *not* needed for concurrent assignment — nothing is reserved under
   ADR-001, so two assignments simply show as higher load, which is accurate.
@@ -240,7 +254,9 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 
 ## BUILD COMPLETENESS
 
-**~56% of the v1 BRD scope** (BR-024 and BR-025 now built). Full requirement-by-requirement audit in
+**~72% of the v1 BRD scope.** BR-012, BR-013, BR-014 and BR-016 now built;
+BO-3 fully met. Remaining: BR-017/BR-018 (risk and forecasting), BR-019
+(reporting), and the surfacing half of BR-007. Full requirement-by-requirement audit in
 `docs/14-build-status.md`. 11 requirements built, 6 partial, 8 not built.
 Five of seven designed domain services are unwritten.
 
@@ -251,11 +267,11 @@ Five of seven designed domain services are unwritten.
 - Cross-team assignment is not enforced at the point of assignment.
 - No self-service password reset — an admin resets from `/people`.
 - Background image not chosen — one CSS property, deliberately deferred.
-- No absence entry, so the load strip's "away" state can never appear (BO-3
-  entirely unmet).
+- ~~No absence entry~~ → **BUILT.** Booking, approval, cancellation, cover
+  detection, holidays and an editable working week.
 - No stalled-work surfacing beyond a flag in the table (BO-2 partial).
 - No forecasting or risk detection (BO-6 entirely unmet).
-- Weekends and holidays are not excluded from durations.
+- ~~Weekends and holidays not excluded~~ → **BUILT** (D-025).
 
 ## NEXT ACTION
 
@@ -267,8 +283,9 @@ Ordered build plan in `docs/14-build-status.md`:
 
 1. ~~Edit a work item~~ — **DONE 2026-08-16**
 2. ~~Authentication and people management~~ — **DONE 2026-08-16**
-3. **Absence and non-working days** ← next
-4. Attention view (stalled, unowned, uncovered)
+3. ~~Absence and non-working days~~ — **DONE 2026-08-16**
+4. **Attention view (stalled, unowned, uncovered)** ← next
+   — the uncovered half already exists on /absence
 5. Flow statistics and risk
 6. Reporting by client and type
 7. Reference data management
