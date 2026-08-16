@@ -10,16 +10,15 @@
 
 ## CURRENT PHASE
 
-**Phase 4 — Implementation.** Features 1–4 built and running. 105 tests.
+**Phase 4 — Implementation.** Features 1–5 built and running. 128 tests.
 
 ## CURRENT OBJECTIVE
 
-Close the recording-context gap (BR-004 backdating, BR-016 assign-time load),
-then flow statistics and forecasting (BR-018) — the last unmet business
-objective, BO-6.
+Flow statistics and forecasting (BR-018) — the last unmet business objective,
+BO-6. Now unblocked: recorded timestamps are finally trustworthy.
 
-**Status:** 105 tests passing against real PostgreSQL 16. ~80% of v1 scope;
-17 of 25 business requirements built, 6 partial, 2 unbuilt. Full audit in
+**Status:** 128 tests passing against real PostgreSQL 16. ~86% of v1 scope;
+19 of 25 business requirements built, 4 partial, 2 unbuilt. Full audit in
 `docs/14-build-status.md`.
 
 ---
@@ -221,6 +220,23 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
   Under ADR-001 every number is derived from recorded flow data, so a forecast
   built on systematically wrong timestamps is a confident false answer rather
   than a weak one.
+- D-033: **Backdating is bounded, not free** (RULE-016). Up to 14 days back,
+  never forward. Past a fortnight a backdated entry is more likely a mistyped
+  year than a real catch-up, and one wild timestamp drags an average nobody is
+  watching. A refusal is recoverable; a poisoned statistic is not.
+- D-034: **The browser reports its timezone offset; the server never guesses
+  one.** `datetime-local` submits naive wall-clock text, so reading it as UTC
+  would shift every entry from an IST team by five and a half hours and push
+  genuine morning entries into the future. No org-timezone setting was added —
+  that is configurability standing in for a fact already available (rule 10).
+- D-035: **Assignment context states facts and does not rank.** The dropdown
+  shows load and absence but keeps alphabetical order and refuses nobody.
+  Sorting by spare capacity would turn a fact into an instruction, and blocking
+  an absent person would be wrong the first time anyone queued up work for
+  someone due back tomorrow.
+- D-036: **Scoping rules are enforced at the write, not only in the widget**
+  (RULE-017). A filtered dropdown is a convenience; the form beneath it accepts
+  any identifier posted to it.
 - D-013: **Optimistic locking** for concurrent edits to one work item.
   Notably *not* needed for concurrent assignment — nothing is reserved under
   ADR-001, so two assignments simply show as higher load, which is accurate.
@@ -306,11 +322,9 @@ Ordered build plan in `docs/14-build-status.md`:
 2. ~~Authentication and people management~~ — **DONE 2026-08-16**
 3. ~~Absence and non-working days~~ — **DONE 2026-08-16**
 4. ~~Attention view~~ — **DONE 2026-08-16** (/attention)
-5. **Recording context — backdating + assign-time load** ← next
-   (BR-004: the service takes a backdated `occurred_at`, the composer has no
-   "when" field, so catch-up entries stamp the wrong time. BR-016: the assign
-   dropdown is bare names and says nothing about load or absence)
-6. Flow statistics and forecasting
+5. ~~Recording context — backdating + assign-time load~~ — **DONE 2026-08-16**
+   (BR-004, BR-016, RULE-016, RULE-017)
+6. **Flow statistics and forecasting** ← next
    (BR-017 risk is partly done — "due soon and not started" is live;
    BR-018 probability ranges still need history. Closes BO-6, the last
    unmet business objective)

@@ -10,6 +10,7 @@
 
 <div class="shell">
   {{ shell.topbar(view, me) }}
+  {{ shell.banner(request) }}
   {{ shell.loadstrip(loads, teams, selected_teams, all_teams, view, 'priority', 'asc') }}
 
   <main class="focus">
@@ -93,6 +94,6 @@
   </main>
 </div>
 
-{{ shell.composer(people, types, view) }}
+{{ shell.composer(assignees, types, view) }}
 </body>
 </html>

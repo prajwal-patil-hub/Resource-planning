@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
 
+from sqlalchemy import select
+
 from app.flow.attention import build_attention
 from app.flow.calendar import WorkingCalendar
 from app.people.absence import record_absence
@@ -165,12 +167,20 @@ def test_an_item_can_be_flagged_for_more_than_one_reason(session, person):
 
 
 def test_the_team_filter_narrows_the_list(session, person, other_person):
+    from app.models import Team
+
     _item(session, person, "Mine", owner=person, state=State.IN_PROGRESS,
           due=date.today() - timedelta(days=1))
-    other_person.team_id = None
-    session.flush()
+    # Assign first, then move them out of the team. Assignment is now scoped by
+    # team (RULE-011), so a cross-team assignment cannot be set up directly —
+    # which is the point of that rule, and this is how the situation genuinely
+    # arises: someone moves teams while still holding work.
     _item(session, person, "Theirs", owner=other_person, state=State.IN_PROGRESS,
           due=date.today() - timedelta(days=1))
+    other_person.team_id = session.scalar(
+        select(Team.id).where(Team.id != person.team_id).limit(1)
+    )
+    session.flush()
 
     scoped = _build(session, team_ids=[person.team_id])
     assert [f.item.title for f in scoped.overdue] == ["Mine"]

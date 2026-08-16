@@ -102,3 +102,28 @@ def visible_team_ids(person: Person, all_team_ids: list[int]) -> list[int]:
     if can(person, Permission.SEE_ALL_TEAMS):
         return all_team_ids
     return [person.team_id] if person.team_id else []
+
+
+def can_assign_to(actor: Person, target: Person) -> bool:
+    """Whether `actor` may put work on `target` (RULE-011, cross-team limit).
+
+    Visibility was already scoped by team, but the assign endpoint never
+    re-checked it — so the rule held for what you could *see* and not for what
+    you could *do*, which is the half that matters. A filtered dropdown is a
+    convenience; it is not a control, because the form underneath it accepts any
+    id someone cares to send.
+
+    Deliberately permissive within a team (K-029): assignment is not reserved to
+    a role, and uncoordinated assignment is handled by visibility and
+    attribution rather than by permission. This blocks only the case the
+    stakeholder actually flagged — reaching into another team.
+
+    Note it checks `ASSIGN_ACROSS_TEAMS` rather than `SEE_ALL_TEAMS`: seeing
+    another team's work and being able to hand them more of it are different
+    powers, and a team lead has the second without the first.
+    """
+    if actor is None or target is None:
+        return False
+    if can(actor, Permission.ASSIGN_ACROSS_TEAMS):
+        return True
+    return actor.team_id is not None and actor.team_id == target.team_id

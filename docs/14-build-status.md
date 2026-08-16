@@ -1,8 +1,8 @@
 # Build Status — what is actually built
 
-**Date:** 2026-08-16 (revised after Features 1–4)
+**Date:** 2026-08-16 (revised after Feature 5)
 **Question answered:** "Is everything built?"
-**Short answer:** Not yet, but close. Roughly **80%** of the v1 scope defined in
+**Short answer:** Not yet, but close. Roughly **86%** of the v1 scope defined in
 `03-brd.md`, up from 45% at the first audit.
 
 This document exists because "is it done?" deserves a measured answer rather
@@ -23,8 +23,8 @@ real state, verified against the running code — not from memory.
 
 | | Count | Was (first audit) |
 |---|---|---|
-| Built | 17 | 11 |
-| Partial | 6 | 6 |
+| Built | 19 | 11 |
+| Partial | 4 | 6 |
 | Not built | 2 | 8 |
 | **Total v1 business requirements** | **25** | 25 |
 
@@ -35,7 +35,7 @@ working calendar), `CoverService` (`uncovered_work`), `StalenessService`
 `RiskService` exists in date-driven form only, and `FlowStatisticsService`
 is still unwritten — which is why BO-6 remains the largest single gap.
 
-**Test count:** 105, all passing against real PostgreSQL 16.
+**Test count:** 128, all passing against real PostgreSQL 16.
 
 ---
 
@@ -48,7 +48,7 @@ is still unwritten — which is why BO-6 remains the largest single gap.
 | BR-001 | Durable record of incoming work | **Built** | |
 | BR-002 | Recording faster than telling a colleague | **Built** | Title-only composer |
 | BR-003 | Recordable before it has an owner | **Built** | |
-| BR-004 | Recording late is normal, not an error | **Partial** | The API accepts a backdated time; **the UI has no way to enter one**. A developer catching up at 6pm cannot say when it actually happened — so every catch-up entry silently records the wrong time, which is precisely what the two-timestamp design was built to avoid |
+| BR-004 | Recording late is normal, not an error | **Built** | A "when did this happen?" control on the composer, the move form and the assign form, collapsed by default so the fast path is untouched. Reads the browser's timezone offset rather than assuming UTC. Refused beyond 14 days back or any time in the future (RULE-016). Backdated entries are labelled as such on the timeline |
 | BR-005 | Work is never destroyed, only cancelled | **Built** | |
 
 ### Making work visible
@@ -75,11 +75,11 @@ is still unwritten — which is why BO-6 remains the largest single gap.
 
 | ID | Requirement | Status | Note |
 |---|---|---|---|
-| BR-016 | See load and absence before assigning | **Partial** | Load is on the strip and absence is on `/attention`, but **the assign dropdown on an item is still a bare list of names**. A lead can hand work to someone the system already knows is away today |
+| BR-016 | See load and absence before assigning | **Built** | The assignee dropdown reads "Priya — 1 of 2, 1 waiting · free" and groups anyone away under "Away today — back 20 Aug". Each option carries its derivation on hover (BR-020). It does not rank and does not refuse: work is often queued for someone due back |
 | BR-017 | Work at risk of missing its due date, flagged early | **Partial** | "Going to miss its date" is live on `/attention` — due within two working days and not started. It is driven by the due date alone; it does not yet use how long this kind of work has historically taken, which is the stronger form of the requirement |
 | BR-018 | Timing as a range with confidence, never a false date | **Not built** | `FlowStatisticsService` unwritten. **BO-6 remains unmet** |
 | BR-019 | Where effort goes, by client and by type | **Not built** | Data exists; no report |
-| BR-020 | Every displayed number is explainable | **Partial** | Load, the timeline, cover and every attention flag now carry their derivation (`why` + `measure`). The table and board columns still show bare counts |
+| BR-020 | Every displayed number is explainable | **Partial** | Load, the timeline, cover, every attention flag and now every assignee option carry their derivation. The table and board columns still show bare counts |
 
 ### Operating constraints
 
@@ -89,21 +89,21 @@ is still unwritten — which is why BO-6 remains the largest single gap.
 | BR-022 | Useful output without estimates or timesheets | **Built** | |
 | BR-023 | Work types extensible without a code change | **Partial** | Reference table exists; adding one needs SQL |
 | BR-024 | Roles addable and placeable in the hierarchy | **Partial** | Same — table exists, no UI |
-| BR-025 | Access governed by role and team | **Built** | bcrypt passwords, server-side revocable sessions (token hash stored, never the token), lockout after repeated failures, first-run bootstrap, permission matrix in `access.py`. **One gap noted below:** cross-team assignment is not refused at the point of assignment |
+| BR-025 | Access governed by role and team | **Built** | bcrypt passwords, server-side revocable sessions (token hash stored, never the token), lockout after repeated failures, first-run bootstrap, permission matrix in `access.py`. Cross-team assignment is now refused at the point of assignment (RULE-017), and the load strip no longer leaks other teams |
 
 ---
 
 ## Gaps that are not business requirements but block a pilot
 
 Closed since the first audit: authentication, editing a work item, people and
-team management. What is left:
+team management, backdated recording, assignment context, cross-team
+enforcement. What is left:
 
 | Gap | Why it blocks |
 |---|---|
-| **No way to say when it actually happened** | The stakeholder was explicit: *"if someone forgets to record it they can do it by EOD for tracking."* The service accepts a backdated `occurred_at` and the two-timestamp design exists precisely for this — but **the composer has no "when" field**, so every catch-up entry silently records 6pm as the moment work started. This corrupts the flow data every other number is derived from, which makes it the most damaging small gap on this list |
-| **Assignment shows no context** | BR-016. The dropdown lists names, not load or absence. The system knows who is away and refuses to say so at the one moment it matters |
+| **No forecasting** | BR-018. `FlowStatisticsService` is unwritten, so **BO-6 is the last unmet business objective**. Now unblocked: the timestamps it would read are finally trustworthy |
+| **No reporting by client or type** | BR-019. The data exists; the manager-facing view does not |
 | **No client or work-type management** | Adding either still requires SQL |
-| **Cross-team assignment not refused** | Visibility is scoped by team, but the assign endpoint does not re-check it |
 | **No self-service password reset** | A lead must reset for you |
 | **No text search** | At a few hundred items, finding one becomes guesswork |
 | **No deployment configuration** | No HTTPS, no backups, no process supervision, no restore procedure |
@@ -134,8 +134,8 @@ Sequenced by dependency and by risk, not by ease.
 | **2** | **Authentication and people management** | BR-025, BR-024 | **Done** | Until this existed, nothing in the audit trail was true |
 | **3** | **Absence and non-working days** | BR-012, BR-013, BR-014 | **Done** | Unlocked BO-3, and stopped weekends inflating every duration |
 | **4** | **Attention view — stalled, unowned, uncovered** | BR-007 | **Done** | Makes the system tell you rather than wait to be asked. The daily-use screen |
-| **5** | **Recording context: backdating + assign-time load** | BR-004, BR-016 | ← **next** | Both are one-screen changes, and the first one protects the integrity of every number in features 6–7. Promoted above forecasting for that reason |
-| **6** | **Flow statistics and forecasting** | BR-017, BR-018 | | Needs ~3–4 weeks of history to mean anything, so build it early and let it fill. **Closes BO-6, the last unmet business objective** |
+| **5** | **Recording context: backdating + assign-time load** | BR-004, BR-016, RULE-016, RULE-017 | **Done** | Both are one-screen changes, and the first protects the integrity of every number in features 6–7. Promoted above forecasting for that reason |
+| **6** | **Flow statistics and forecasting** | BR-017, BR-018 | ← **next** | Needs ~3–4 weeks of history to mean anything, so build it early and let it fill. **Closes BO-6, the last unmet business objective** |
 | **7** | **Reporting by client and type** | BR-019 | | The manager-facing view. Depends on 6 |
 | **8** | **Reference data management** | BR-023 | | Small |
 | **9** | **Search** | — | | Small |
@@ -157,3 +157,4 @@ avoid. Fix the input before building the thing that consumes it.
 |---|---|---|
 | 1.0 | 2026-08-16 | First audit, against BRD v1.1 and the running code |
 | 1.1 | 2026-08-16 | Re-audited after Features 1–4. 11→17 built, 8→2 unbuilt. Plan re-ordered: recording context promoted above forecasting, with the reason recorded |
+| 1.2 | 2026-08-16 | Feature 5 built. BR-004 and BR-016 closed; RULE-016 and RULE-017 added. 17→19 built. Two defects found while verifying and fixed: the load strip leaked every team's load to a single-team user, and cancelled absences still counted as away |

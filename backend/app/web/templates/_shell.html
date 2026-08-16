@@ -76,6 +76,15 @@
 {% endmacro %}
 
 
+{# Until now the board views had no way to show an error at all: a refused
+   recording simply did not appear, with nothing said. Silence is the worst
+   possible response to a rejected write — the user believes it worked. #}
+{% macro banner(request) %}
+{% set err = request.query_params.get('error') %}
+{% if err %}<div class="error anim-rise">{{ err }}</div>{% endif %}
+{% endmacro %}
+
+
 {% macro loadstrip(loads, teams, selected_teams, all_teams, view, sort, dir) %}
 <section class="loads glass anim-rise" style="animation-delay:60ms" aria-label="Team load">
   <span class="load-label">Load</span>
@@ -149,17 +158,141 @@
 {% endmacro %}
 
 
-{% macro composer(people, types, view) %}
+{# BR-016. The dropdown a lead picks an assignee from now says what choosing
+   each person would cost them. It does not rank and it does not refuse: people
+   are assigned work for reasons the system cannot see, and sorting by spare
+   capacity would turn a fact into an instruction. Away people are grouped
+   apart, because that is the one fact that changes the answer today. #}
+{% macro assignee_select(options, name='owner_id', selected=None, unassigned='Unassigned', required=false, current_name=None) %}
+{% set here = options | rejectattr('is_away') | list %}
+{% set away = options | selectattr('is_away') | list %}
+{% set ids = options | map(attribute='person_id') | list %}
+<select name="{{ name }}" class="assignee-select" aria-label="Assign to"
+        {% if required %}required{% endif %}>
+  {% if unassigned %}<option value="">{{ unassigned }}</option>{% endif %}
+  {# The current owner may sit outside what this person may assign to — someone
+     in another team, or since deactivated. Without this the browser would
+     silently select the first name in the list, and the control would appear to
+     state an owner that is not the owner. #}
+  {% if current_name and selected not in ids %}
+  <option value="" selected disabled>Currently {{ current_name }} — not yours to reassign</option>
+  {% endif %}
+  {% if here %}
+  <optgroup label="Here today">
+    {% for o in here %}
+    <option value="{{ o.person_id }}" title="{{ o.explanation }}"
+            {% if selected == o.person_id %}selected{% endif %}>{{ o.label }}</option>
+    {% endfor %}
+  </optgroup>
+  {% endif %}
+  {% if away %}
+  <optgroup label="Away today">
+    {% for o in away %}
+    <option value="{{ o.person_id }}" title="{{ o.explanation }}"
+            {% if selected == o.person_id %}selected{% endif %}>{{ o.label }}</option>
+    {% endfor %}
+  </optgroup>
+  {% endif %}
+</select>
+{% endmacro %}
+
+
+{# BR-004. Recording late is normal — "if someone forgets to record it they can
+   do it by EOD". Collapsed by default so the fast path is untouched: type a
+   title, press ↑, and the moment of typing is the moment recorded. Open it only
+   when that is not true.
+
+   A native <details>, like the team filter — no JS needed to use it, and it
+   still works if scripting fails. The script below only fills in the browser's
+   timezone offset and the "no future dates" ceiling. #}
+{% macro when_field(label='When did this actually happen?') %}
+<details class="when-picker">
+  <summary title="{{ label }}">
+    <span aria-hidden="true">🕘</span><span class="when-tag">now</span>
+  </summary>
+  <div class="when-panel glass">
+    <label class="fld">
+      <span>{{ label }}</span>
+      <input type="datetime-local" name="happened_at" class="when-input" />
+    </label>
+    <p class="fld-note">
+      Leave it alone to record this as happening now. The time you typed it is
+      kept separately either way, so a catch-up entry stays honest about being
+      one.
+    </p>
+    <button type="button" class="btn btn-sm when-clear">Back to now</button>
+  </div>
+</details>
+<input type="hidden" name="tz_offset" class="tz-offset" value="" />
+{% endmacro %}
+
+
+{% macro when_script() %}
+<script>
+  (function () {
+    // The browser's offset in minutes to ADD to local time to reach UTC.
+    // Without it the server would read "09:30" as 09:30 UTC and shift every
+    // backdated entry by the team's whole offset from UTC.
+    var offset = new Date().getTimezoneOffset();
+    Array.prototype.forEach.call(document.querySelectorAll(".tz-offset"), function (f) {
+      f.value = offset;
+    });
+
+    function localNow() {
+      var d = new Date(Date.now() - offset * 60000);
+      return d.toISOString().slice(0, 16);
+    }
+
+    Array.prototype.forEach.call(document.querySelectorAll(".when-picker"), function (picker) {
+      var input = picker.querySelector(".when-input");
+      var tag = picker.querySelector(".when-tag");
+      var clear = picker.querySelector(".when-clear");
+      if (!input) return;
+
+      // Belt and braces with the server guard: the browser will not offer a
+      // future moment, and the server refuses one anyway.
+      input.max = localNow();
+
+      function sync() {
+        var set = !!input.value;
+        picker.classList.toggle("is-set", set);
+        if (!tag) return;
+        // Compact on purpose: the composer is a single row and a long label
+        // wraps the send button onto a second line, which is a worse outcome
+        // than a terser date.
+        if (set) {
+          var d = new Date(input.value);
+          tag.textContent = d.toLocaleDateString(undefined, { day: "numeric", month: "short" })
+            + " " + String(d.getHours()).padStart(2, "0")
+            + ":" + String(d.getMinutes()).padStart(2, "0");
+        } else {
+          tag.textContent = "now";
+        }
+      }
+      input.addEventListener("change", sync);
+      input.addEventListener("input", sync);
+      if (clear) {
+        clear.addEventListener("click", function () {
+          input.value = "";
+          sync();
+          picker.open = false;
+        });
+      }
+      sync();
+    });
+  })();
+</script>
+{% endmacro %}
+
+
+{% macro composer(options, types, view) %}
 <div class="composer-dock">
   <div style="width:min(940px,100%)">
     <form class="composer glass" method="post" action="/items">
       <input type="hidden" name="view" value="{{ view }}" />
       <input type="text" name="title" placeholder="What came in?"
              autofocus required autocomplete="off" />
-      <select name="owner_id" aria-label="Assign to">
-        <option value="">Unassigned</option>
-        {% for p in people %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
-      </select>
+      {{ assignee_select(options) }}
       <select name="type_id" aria-label="Type">
         <option value="">Type</option>
         {% for t in types %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
@@ -169,9 +302,11 @@
         <option value="{{ p }}" {% if p == 2 %}selected{% endif %}>P{{ p }}</option>
         {% endfor %}
       </select>
+      {{ when_field("When did this come in?") }}
       <button class="btn btn-primary composer-send" type="submit" aria-label="Record" title="Record">↑</button>
     </form>
     <p class="composer-hint">A title is all you need — everything else can be filled in later.</p>
   </div>
 </div>
+{{ when_script() }}
 {% endmacro %}

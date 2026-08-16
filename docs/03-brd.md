@@ -372,10 +372,24 @@ decided it is marked OPEN rather than guessed.
 | **RULE-013** | The system must not forecast from fewer than a defined minimum of comparable completed items; below that it must say it does not yet know. |
 | **RULE-014** | Due dates originate from the client. The system evaluates them; it does not set them. |
 | **RULE-015 (OPEN)** | Who may set priority, and whether P0 triggers preemption automatically or a human always decides — see OPEN-2. |
+| **RULE-016** | Work may be recorded as having happened up to 14 days in the past, and never in the future. Beyond that window the entry is refused with its reason. |
+| **RULE-017** | A person may only be assigned work from a team they are permitted to assign into. The check is enforced at the point of assignment, not only in the list of names offered. |
 
 > **On RULE-013.** Forecasting from three completed items produces a confident
 > number with no basis. Refusing to answer until there is enough history is a
 > feature, not a limitation, and protects the credibility of every other figure.
+
+> **On RULE-016.** "Record it by EOD" needs hours, not weeks. Past a fortnight a
+> backdated entry is far more likely a mistyped year or month than a real
+> catch-up — and one wild timestamp does more damage to a cycle-time
+> distribution than a dozen missing entries, because it silently drags an
+> average nobody is watching. A refusal is recoverable; a poisoned statistic is
+> not, because nobody knows to go looking for it.
+
+> **On RULE-017.** Visibility was already scoped by team, but a filtered
+> dropdown is a convenience and not a control — the form beneath it accepts any
+> identifier that is posted. The rule held for what someone could *see* and was
+> silent on what they could *do*, which is the half that matters.
 
 ---
 

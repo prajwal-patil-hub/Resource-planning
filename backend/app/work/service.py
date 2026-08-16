@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select, text, update
 from sqlalchemy.orm import Session
 
+from app.access import can_assign_to
 from app.models import Person, StateTransition, WorkItem, WorkItemParticipant
 from app.work.lifecycle import IllegalTransition, State, check_transition
 
@@ -143,6 +144,16 @@ def assign(
     person = session.get(Person, person_id)
     if person is None or not person.active:
         raise WorkItemError("That person is not available for assignment.")
+
+    # RULE-011 enforced where it bites, not only where it shows. The dropdown is
+    # already scoped by team, but a filtered list is a convenience and not a
+    # control — the form beneath it will accept any id that is posted.
+    actor = session.get(Person, actor_id)
+    if not can_assign_to(actor, person):
+        raise WorkItemError(
+            f"{person.name} is in another team. Ask their lead to take this on, "
+            f"or have someone who can see both teams assign it."
+        )
 
     # BR-004: work recorded after the fact carries the time it really happened,
     # so ownership periods can be backdated too. Without this the ownership

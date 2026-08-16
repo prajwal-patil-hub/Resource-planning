@@ -1,12 +1,5 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{{ item.title }}</title>
-  <link rel="stylesheet" href="/static/glass.css" />
-</head>
-<body>
+{% import "_shell.html" as shell %}
+{{ shell.head(item.title) }}
 <div class="shell">
 
   <header class="topbar glass">
@@ -50,6 +43,9 @@
             {% for o in open_items %}<option value="{{ o.id }}">#{{ o.id }} {{ o.title[:46] }}</option>{% endfor %}
           </select>
           <input type="text" name="note" placeholder="Note (optional)" />
+          {# BR-004. "Started this at 9am" recorded at 6pm must say 9am, or
+             every cycle-time figure derived from it is wrong by a working day. #}
+          {{ shell.when_field("When did this change actually happen?") }}
           <button class="btn" type="submit">Move</button>
         </form>
         {% else %}
@@ -111,14 +107,22 @@
         </details>
 
         {% if allowed %}
+        {# BR-016: load and absence at the moment of choosing, not on another
+           screen. Before this, a lead could hand work to someone the system
+           already knew was on leave, and it would say nothing. #}
         <form class="form-row" method="post" action="/items/{{ item.id }}/assign">
-          <select name="person_id" required aria-label="Assign to">
-            {% for p in people %}
-            <option value="{{ p.id }}" {% if owner and owner.person_id == p.id %}selected{% endif %}>{{ p.name }}</option>
-            {% endfor %}
-          </select>
+          {{ shell.assignee_select(assignees, name='person_id',
+                                   selected=owner.person_id if owner else None,
+                                   unassigned=None, required=true,
+                                   current_name=owner.person.name if owner else None) }}
+          {{ shell.when_field("When did they pick this up?") }}
           <button class="btn btn-sm" type="submit">Assign</button>
         </form>
+        <p class="fld-note" style="margin-top:6px">
+          Counts are items in progress against that person's own normal level —
+          hover a name for the workings. Anyone away is still selectable: work is
+          often queued up for someone due back.
+        </p>
         {% endif %}
       </section>
 
@@ -252,7 +256,9 @@
               {% set t = tl.transitions[loop.index0] %}
               {% if t %}
                 <div class="tl-when">by {{ t.changed_by.name }}
-                  {% if (t.recorded_at - t.occurred_at).total_seconds() > 900 %}
+                  {# One threshold, defined once in app/work/timing.py. Two
+                     copies of "how late counts as late" would drift apart. #}
+                  {% if was_backdated(t.occurred_at, t.recorded_at) %}
                   <span class="lag">recorded {{ (t.recorded_at - t.occurred_at) | duration }} later</span>
                   {% endif %}
                 </div>
@@ -267,5 +273,6 @@
     </div>
   </div>
 </div>
+{{ shell.when_script() }}
 </body>
 </html>

@@ -102,7 +102,121 @@ def _is_absent(session: Session, person_id: int, day: date) -> bool:
     row = session.execute(
         select(Absence.id).where(
             Absence.person_id == person_id,
+            Absence.cancelled_at.is_(None),
             Absence.period.op("@>")(day),
         )
     ).first()
     return row is not None
+
+
+# --------------------------------------------------------------------------
+# Assignment context (BR-016)
+# --------------------------------------------------------------------------
+
+
+@dataclass
+class AssignmentOption:
+    """One person, as they look at the moment someone is choosing an assignee.
+
+    BR-016 asks that load and absence be visible *before* assigning. The load
+    strip already showed both, on a different part of a different screen — which
+    satisfies the letter of the requirement and none of its purpose. A lead
+    picking a name from a dropdown was choosing blind, and the system knew.
+    """
+
+    person_id: int
+    name: str
+    load: int
+    normal_load: int
+    queued: int
+    #: First day back, where they are away today. `None` means they are here.
+    returns_on: date | None = None
+
+    @property
+    def is_away(self) -> bool:
+        return self.returns_on is not None
+
+    @property
+    def is_over(self) -> bool:
+        return self.load > self.normal_load
+
+    @property
+    def has_room(self) -> bool:
+        return self.load < self.normal_load and not self.is_away
+
+    @property
+    def label(self) -> str:
+        """What goes in the dropdown itself.
+
+        Deliberately terse and uniform: this is read while the reader is doing
+        something else, so it has to be scannable at a glance rather than read.
+        """
+        if self.is_away:
+            return f"{self.name} — away until {self.returns_on.strftime('%-d %b')}"
+        state = "over" if self.is_over else ("free" if self.has_room else "full")
+        tail = f", {self.queued} waiting" if self.queued else ""
+        return f"{self.name} — {self.load} of {self.normal_load}{tail} · {state}"
+
+    @property
+    def explanation(self) -> str:
+        """BR-020. The label is a number; this is where it came from."""
+        parts = [
+            f"{self.load} item(s) in progress against a normal level of "
+            f"{self.normal_load} for {self.name}"
+        ]
+        if self.queued:
+            parts.append(f"{self.queued} more owned but not started")
+        if self.is_away:
+            parts.append(f"away today, back {self.returns_on.strftime('%-d %b')}")
+        return "; ".join(parts)
+
+
+def assignment_options(
+    session: Session,
+    *,
+    team_ids: list[int] | None = None,
+    today: date | None = None,
+) -> list[AssignmentOption]:
+    """Everyone who could take this work, with what it would cost them.
+
+    Note what this deliberately does **not** do: it does not rank people, and it
+    does not refuse anyone. Assignment is not reserved to one role (K-029), and
+    people are assigned work for reasons the system cannot see — they know the
+    client, they wrote the code, they are back tomorrow. Sorting by spare
+    capacity would quietly turn a fact into an instruction, and refusing an
+    absent person would be wrong the first time someone queues up Monday's work
+    on Friday. So: state the facts plainly, in a stable order, and let the
+    person choosing decide.
+    """
+    today = today or datetime.now(UTC).date()
+    entries = load_for_team(session, team_ids=team_ids, today=today)
+
+    options = [
+        AssignmentOption(
+            person_id=entry.person_id,
+            name=entry.name,
+            load=entry.load,
+            normal_load=entry.normal_load,
+            queued=len(entry.queued),
+            returns_on=_returns_on(session, entry.person_id, today)
+            if entry.absent_today
+            else None,
+        )
+        for entry in entries
+    ]
+    # Alphabetical, because the reader is looking for a name they already have
+    # in mind and any other order makes them hunt for it. Grouping the away
+    # people apart is the template's job — that is presentation, not policy.
+    return sorted(options, key=lambda o: o.name)
+
+
+def _returns_on(session: Session, person_id: int, day: date) -> date | None:
+    """First day back — the exclusive upper bound of the covering absence."""
+    row = session.scalar(
+        select(Absence.period).where(
+            Absence.person_id == person_id,
+            Absence.cancelled_at.is_(None),
+            Absence.period.op("@>")(day),
+        )
+    )
+    return row.upper if row is not None else None

@@ -116,6 +116,13 @@
    default where only the OS preference decides.
    ========================================================================== */
 
+/* Native widget internals — the date picker's calendar button, spin arrows,
+   scrollbars — are drawn by the browser, not by this stylesheet. They follow
+   `color-scheme` and nothing else. Only `light` was ever declared, so the dark
+   theme fell through to the browser default and drew them light-on-dark. */
+:root { color-scheme: dark; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) { color-scheme: light; }
 }
@@ -457,6 +464,8 @@ input[type="email"],
 input[type="password"],
 input[type="number"],
 input[type="date"],
+input[type="datetime-local"],
+input[type="time"],
 input[type="search"],
 select,
 textarea {
@@ -1578,3 +1587,83 @@ dialog.sheet[open] { animation: rise-in 240ms var(--ease) both; }
 .flag-why b { color: var(--text-2); font-weight: 600; }
 
 .panel h2 .count { margin-left: 7px; }
+
+/* ==========================================================================
+   Recording context — Feature 5 (BR-004, BR-016)
+   ========================================================================== */
+
+/* The "when did this actually happen?" disclosure.
+
+   Collapsed to a single chip so the fast path is untouched: the overwhelming
+   majority of entries are recorded as they happen, and making everyone confirm
+   a timestamp they did not need would be exactly the recording friction the
+   whole product is judged against. */
+.when-picker { position: relative; flex: none; }
+
+.when-picker summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: var(--glass-fill-sunk);
+  border: 1px solid var(--glass-border-soft);
+  font-size: 0.78rem;
+  color: var(--text-2);
+  white-space: nowrap;
+  transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.when-picker summary::-webkit-details-marker { display: none; }
+.when-picker summary:hover { border-color: var(--glass-border); color: var(--text); }
+.when-picker summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* A backdated entry announces itself. Someone glancing at the composer should
+   be able to tell at once that it is not about to record "now" — a silently
+   retained timestamp from a previous entry would be a data-integrity trap. */
+.when-picker.is-set summary {
+  color: var(--text);
+  border-color: var(--focus-ring);
+  background: var(--glass-fill);
+}
+
+.when-tag { font-variant-numeric: tabular-nums; }
+
+.when-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+  width: 268px;
+  padding: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  border-radius: var(--radius);
+  animation: rise-in 220ms var(--ease) both;
+  background-color: var(--popover-fill);
+}
+
+/* In the composer the dock is pinned to the bottom of the viewport, so a panel
+   opening downward would land off-screen. */
+.composer .when-panel { top: auto; bottom: calc(100% + 10px); }
+
+.when-panel .fld { flex: none; }
+.when-panel input[type="datetime-local"] { width: 100%; }
+.when-panel .fld-note { margin: 0; }
+.when-panel .btn { align-self: flex-start; }
+
+/* The assignee dropdown carries load and absence inline (BR-016), so it needs
+   room for a sentence rather than a name. */
+.assignee-select { max-width: 260px; }
+.assignee-select optgroup { font-style: normal; font-weight: 600; }
+
+/* The composer is one row, and it has to stay one row. Two extra controls
+   pushed the send button onto a second line, which turns the fastest path in
+   the product into a two-storey form — so the title yields its basis and the
+   assignee list is capped tighter here than elsewhere. */
+.composer .assignee-select { max-width: 178px; }
+.composer input[type="text"] { flex: 1 1 240px; }
+.composer .when-picker summary { padding: 7px 11px; }

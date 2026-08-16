@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import Cookie, Depends, FastAPI, Form, HTTPException, Query, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -34,7 +35,7 @@ from app.config import settings
 from app.db import get_session
 from app.flow.attention import build_attention
 from app.flow.calendar import load_calendar
-from app.flow.load import load_for_team
+from app.flow.load import assignment_options, load_for_team
 from app.people.absence import (
     AbsenceError,
     absences_for,
@@ -57,6 +58,7 @@ from app.models import (
     WorkItemType,
 )
 from app.work.lifecycle import LABELS, OPEN_STATES, IllegalTransition, State
+from app.work.timing import TimingError, parse_when, was_backdated
 from app.work.service import (
     EDITABLE,
     WorkItemError,
@@ -106,6 +108,7 @@ def signed_in_id(person: Person = Depends(signed_in)) -> int:
 
 templates.env.globals["can"] = can
 templates.env.globals["Permission"] = Permission
+templates.env.globals["was_backdated"] = was_backdated
 
 
 @app.exception_handler(NeedsLogin)
@@ -515,8 +518,8 @@ def page_board(
     # RULE-011 / BR-025: you can only filter within what you are allowed to see.
     # Narrowing the option list rather than the results means the UI never
     # offers a choice that would silently return nothing.
-    permitted = set(visible_team_ids(me, [t.id for t in all_teams]))
-    teams = [t for t in all_teams if t.id in permitted]
+    permitted = visible_team_ids(me, [t.id for t in all_teams])
+    teams = [t for t in all_teams if t.id in set(permitted)]
 
     team_ids = _selected_team_ids(team, teams)
     all_selected = len(team_ids) == len(teams)
@@ -529,7 +532,17 @@ def page_board(
         "clients": list(session.scalars(select(Client).where(Client.active.is_(True)).order_by(Client.name))),
         # The load strip narrows with the filter too — showing every person's
         # load beside one team's board would be comparing different things.
-        "loads": load_for_team(session, team_ids=None if all_selected else team_ids),
+        #
+        # "All teams" means all the teams *this person may see*, not every team
+        # in the organization. Passing None here leaked the whole company's load
+        # to a developer scoped to one team: their team filter offered a single
+        # option, that option counted as "all", and the strip then went
+        # unfiltered. RULE-011 was enforced on the choice and lost on the query.
+        "loads": load_for_team(session, team_ids=permitted if all_selected else team_ids),
+        # BR-016: the composer's assignee list carries load and absence, and is
+        # scoped the same way the assign endpoint now enforces. Offering a name
+        # that the next click would refuse is worse than not offering it.
+        "assignees": assignment_options(session, team_ids=permitted),
         "teams": teams,
         "selected_teams": set(team_ids) if not all_selected else set(),
         "all_teams": all_selected,
@@ -635,20 +648,31 @@ def page_create(
     client_id: str = Form(default=""),
     priority: int = Form(default=2),
     view: str = Form(default="board"),
+    happened_at: str = Form(default=""),
+    tz_offset: str = Form(default=""),
     session: Session = Depends(get_session),
     actor_id: int = Depends(signed_in_id),
 ):
     """The composer. Title is the only field the user must fill."""
-    create_work_item(
-        session,
-        title=title,
-        created_by_id=actor_id,
-        owner_id=int(owner_id) if owner_id else None,
-        type_id=int(type_id) if type_id else None,
-        client_id=int(client_id) if client_id else None,
-        priority=priority,
-    )
-    return RedirectResponse(f"/?view={view}" if view in ("board", "table") else "/", status_code=303)
+    back = f"/?view={view}" if view in ("board", "table", "focus") else "/"
+    try:
+        # BR-004. Blank means now, which is the overwhelmingly common case and
+        # costs nothing; a stated time is honoured, so an entry caught up at the
+        # end of the day carries the hour the work actually started.
+        occurred = parse_when(happened_at, tz_offset)
+        create_work_item(
+            session,
+            title=title,
+            created_by_id=actor_id,
+            owner_id=int(owner_id) if owner_id else None,
+            type_id=int(type_id) if type_id else None,
+            client_id=int(client_id) if client_id else None,
+            priority=priority,
+            occurred_at=occurred,
+        )
+    except (TimingError, WorkItemError) as exc:
+        return RedirectResponse(f"{back}{'&' if '?' in back else '?'}error={quote(str(exc))}", status_code=303)
+    return RedirectResponse(back, status_code=303)
 
 
 @app.get("/items/{item_id}", response_class=HTMLResponse)
@@ -685,6 +709,14 @@ def page_item(
                 )
             ),
             "people": list(session.scalars(select(Person).where(Person.active.is_(True)).order_by(Person.name))),
+            # BR-016. Scoped the same way the assign endpoint now enforces, so
+            # the list never offers a name the next click would refuse.
+            "assignees": assignment_options(
+                session,
+                team_ids=visible_team_ids(
+                    me, list(session.scalars(select(Team.id).where(Team.active.is_(True))))
+                ),
+            ),
             "types": list(session.scalars(select(WorkItemType).where(WorkItemType.active.is_(True)).order_by(WorkItemType.sort_order))),
             "clients": list(session.scalars(select(Client).where(Client.active.is_(True)).order_by(Client.name))),
             "me": me,
@@ -698,6 +730,8 @@ def page_transition(
     to_state: str = Form(...),
     displaced_by_id: str = Form(default=""),
     note: str = Form(default=""),
+    happened_at: str = Form(default=""),
+    tz_offset: str = Form(default=""),
     session: Session = Depends(get_session),
     actor_id: int = Depends(signed_in_id),
 ):
@@ -705,6 +739,10 @@ def page_transition(
     if item is None:
         raise HTTPException(status_code=404, detail="No such work item")
     try:
+        # BR-004 matters most here. Creation times are usually close to the
+        # truth; state changes are what cycle time is measured from, and "I
+        # started this at 9am" typed at 6pm is the entry that would otherwise
+        # lose a whole working day.
         transition(
             session,
             item=item,
@@ -712,9 +750,10 @@ def page_transition(
             actor_id=actor_id,
             displaced_by_id=int(displaced_by_id) if displaced_by_id else None,
             note=note or None,
+            occurred_at=parse_when(happened_at, tz_offset),
         )
-    except (WorkItemError, IllegalTransition) as exc:
-        return RedirectResponse(f"/items/{item_id}?error={exc}", status_code=303)
+    except (TimingError, WorkItemError, IllegalTransition) as exc:
+        return RedirectResponse(f"/items/{item_id}?error={quote(str(exc))}", status_code=303)
     return RedirectResponse(f"/items/{item_id}", status_code=303)
 
 
@@ -757,13 +796,24 @@ def page_edit(
 def page_assign(
     item_id: int,
     person_id: int = Form(...),
+    happened_at: str = Form(default=""),
+    tz_offset: str = Form(default=""),
     session: Session = Depends(get_session),
     actor_id: int = Depends(signed_in_id),
 ):
     item = session.get(WorkItem, item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="No such work item")
-    assign(session, item=item, person_id=person_id, actor_id=actor_id)
+    try:
+        assign(
+            session,
+            item=item,
+            person_id=person_id,
+            actor_id=actor_id,
+            occurred_at=parse_when(happened_at, tz_offset),
+        )
+    except (TimingError, WorkItemError) as exc:
+        return RedirectResponse(f"/items/{item_id}?error={quote(str(exc))}", status_code=303)
     return RedirectResponse(f"/items/{item_id}", status_code=303)
 
 # --------------------------------------------------------------------------

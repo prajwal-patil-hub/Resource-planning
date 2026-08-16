@@ -101,5 +101,11 @@ def other_person(session):
 
 
 @pytest.fixture
+def manager(session):
+    """Someone with ASSIGN_ACROSS_TEAMS — the escape hatch for RULE-011."""
+    return _make_person(session, "Meera", "meera@example.com", role_code="MANAGER")
+
+
+@pytest.fixture
 def qa_person(session):
     return _make_person(session, "Sana", "sana@example.com", role_code="QA")
