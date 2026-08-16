@@ -1,0 +1,16 @@
+{% import "_auth_page.html" as auth %}
+{{ auth.page("Work Register", "Sign in to continue.") }}
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form class="auth-form" method="post" action="/login">
+    <input type="hidden" name="next" value="{{ next }}" />
+    <label class="fld">
+      <span>Email</span>
+      <input type="email" name="email" autocomplete="username" required autofocus />
+    </label>
+    <label class="fld">
+      <span>Password</span>
+      <input type="password" name="password" autocomplete="current-password" required />
+    </label>
+    <button class="btn btn-primary" type="submit">Sign in</button>
+  </form>
+{{ auth.endpage() }}

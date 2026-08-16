@@ -30,10 +30,23 @@
 {% endmacro %}
 
 
-{% macro topbar(view) %}
+{% macro topbar(view, me=None) %}
 <header class="topbar glass anim-rise">
   <h1 class="brand">Work Register <span>· all open work</span></h1>
   <span class="spacer"></span>
+  {% if me %}
+  <span class="whoami" title="{{ me.email }}">
+    <span class="avatar" aria-hidden="true">{{ me.name[:1] | upper }}</span>
+    <span class="whoami-name">{{ me.name }}</span>
+    <span class="whoami-role">{{ me.role.name }}</span>
+  </span>
+  {% if can(me, Permission.MANAGE_PEOPLE) %}
+  <a class="btn btn-sm" href="/people">People</a>
+  {% endif %}
+  <form method="post" action="/logout" style="display:inline">
+    <button class="btn btn-sm" type="submit">Sign out</button>
+  </form>
+  {% endif %}
   <nav class="toggle" aria-label="View">
     <a href="/?view=board" {% if view == 'board' %}aria-current="page"{% endif %}>Board</a>
     <a href="/?view=table" {% if view == 'table' %}aria-current="page"{% endif %}>Table</a>

@@ -240,16 +240,16 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 
 ## BUILD COMPLETENESS
 
-**~45% of the v1 BRD scope.** Full requirement-by-requirement audit in
+**~56% of the v1 BRD scope** (BR-024 and BR-025 now built). Full requirement-by-requirement audit in
 `docs/14-build-status.md`. 11 requirements built, 6 partial, 8 not built.
 Five of seven designed domain services are unwritten.
 
 ## KNOWN GAPS IN THE BUILD
 
-- **No authentication.** `X-Actor-Id` header stands in for the signed-in user so
-  Feature 1 could be a complete vertical slice without pulling identity into it.
-  Must exist before real use.
-- **Permissions not enforced.** ADR-002 defines the model; `access` is a stub.
+- ~~No authentication~~ → **BUILT 2026-08-16.** Sessions, password policy,
+  lockout, first-run setup, people management, permission matrix.
+- Cross-team assignment is not enforced at the point of assignment.
+- No self-service password reset — an admin resets from `/people`.
 - Background image not chosen — one CSS property, deliberately deferred.
 - No absence entry, so the load strip's "away" state can never appear (BO-3
   entirely unmet).
@@ -266,8 +266,8 @@ load-bearing by informed choice, not oversight.
 Ordered build plan in `docs/14-build-status.md`:
 
 1. ~~Edit a work item~~ — **DONE 2026-08-16**
-2. **Authentication and people management** ← next
-3. Absence and non-working days
+2. ~~Authentication and people management~~ — **DONE 2026-08-16**
+3. **Absence and non-working days** ← next
 4. Attention view (stalled, unowned, uncovered)
 5. Flow statistics and risk
 6. Reporting by client and type

@@ -86,11 +86,28 @@ history would silently change past measurements, and no report would reveal it.
 makes a batch of end-of-day updates look like everything took a day. The gap
 between the two is itself reported as a data-quality signal.
 
+## Authentication
+
+First run has no users, so `/` sends you to `/setup` to create the first
+administrator. That screen closes permanently once anyone can sign in — there is
+still no configuration step (BR-021).
+
+Two design points worth knowing:
+
+**Sessions are rows in `user_session`, not self-contained signed cookies.** A
+signed cookie cannot be revoked, so deactivating someone would leave their
+access working until it expired. For a product whose entire value is an accurate
+record of who did what, that is the wrong trade. Only a hash of the session token
+is stored, so a database leak does not hand over live sessions.
+
+**Permissions live in `app/access.py`**, per ADR-002 — one matrix, one `can()`
+function. Moving them into the database later changes that file and nothing that
+calls it.
+
+Set `COOKIES_SECURE=1` in production or the session cookie travels in clear text.
+
 ## Known gaps
 
-- **No authentication.** `X-Actor-Id` stands in for the signed-in user so the
-  first vertical slice could be complete and testable without pulling identity,
-  sessions and password policy into it. Must be built before real use.
-- **No permission enforcement yet.** ADR-002 defines the model; the `access`
-  module is a placeholder.
-- Cross-team assignment is unrestricted in code (BRD marks it restricted).
+- Cross-team assignment is not yet enforced at the point of assignment (the
+  permission exists and is checked for visibility, not for the assign action).
+- No password reset by email — an admin resets it from `/people`.

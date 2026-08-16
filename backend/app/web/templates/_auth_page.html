@@ -1,0 +1,32 @@
+{# Shared shell for the signed-out screens. Deliberately minimal: the only
+   thing on screen is the one action being asked for. #}
+{% macro page(title, subtitle) %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title }}</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("rp-theme");
+        if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/glass.css" />
+</head>
+<body>
+<div class="auth-shell">
+  <div class="auth-card glass anim-rise">
+    <h1 class="auth-title">{{ title }}</h1>
+    {% if subtitle %}<p class="auth-sub">{{ subtitle }}</p>{% endif %}
+{% endmacro %}
+
+{% macro endpage() %}
+  </div>
+</div>
+</body>
+</html>
+{% endmacro %}

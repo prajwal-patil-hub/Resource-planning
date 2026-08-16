@@ -13,7 +13,7 @@
 {% endmacro %}
 
 <div class="shell">
-  {{ shell.topbar(view) }}
+  {{ shell.topbar(view, me) }}
   {{ shell.loadstrip(loads, teams, selected_teams, all_teams, view, sort|default('priority'), dir|default('asc')) }}
 
   <main class="table-wrap glass anim-rise" style="animation-delay:90ms">

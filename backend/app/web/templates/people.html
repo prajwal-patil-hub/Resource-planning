@@ -1,0 +1,132 @@
+{% import "_shell.html" as shell %}
+{{ shell.head("People") }}
+
+<div class="shell" style="padding-bottom:40px">
+
+  <header class="topbar glass anim-rise">
+    <a class="back" href="/">← All work</a>
+    <h1 class="brand">People <span>· {{ people | selectattr('active') | list | length }} active</span></h1>
+    <span class="spacer"></span>
+    <form method="post" action="/logout" style="display:inline">
+      <button class="btn btn-sm" type="submit">Sign out</button>
+    </form>
+  </header>
+
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  {% if notice %}<div class="notice">{{ notice }}</div>{% endif %}
+
+  <section class="panel glass anim-rise" style="animation-delay:60ms">
+    <h2>Add someone</h2>
+    <form class="fld-row" method="post" action="/people">
+      <label class="fld"><span>Name</span><input type="text" name="name" required /></label>
+      <label class="fld"><span>Email</span><input type="email" name="email" required /></label>
+      <label class="fld">
+        <span>Role</span>
+        <select name="role_id">
+          {% for r in roles %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="fld">
+        <span>Team</span>
+        <select name="team_id">
+          <option value="">—</option>
+          {% for t in teams %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="fld">
+        <span>Normal load <em>(items at once)</em></span>
+        <input type="number" name="normal_load" value="3" min="1" max="20" />
+      </label>
+      <label class="fld">
+        <span>Password <em>(optional)</em></span>
+        <input type="password" name="password" autocomplete="new-password" minlength="10" />
+      </label>
+      <button class="btn btn-primary" type="submit" style="align-self:flex-end">Add</button>
+    </form>
+    <p class="fld-note">
+      Leave the password blank to add someone to the directory without giving
+      them a login — work can be assigned to them before they ever sign in.
+      Any password you set here must be changed by them at first sign-in.
+    </p>
+  </section>
+
+  <section class="table-wrap glass anim-rise" style="animation-delay:110ms">
+    <table class="grid">
+      <thead>
+        <tr>
+          <th>Name</th><th>Email</th><th>Role</th><th>Team</th>
+          <th>Normal load</th><th>Login</th><th>Last seen</th><th>Active</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in people %}
+        <tr style="{% if not p.active %}opacity:.5{% endif %}">
+          <form method="post" action="/people/{{ p.id }}">
+            <td class="t-title">
+              <span class="assignee">
+                <span class="avatar" aria-hidden="true">{{ p.name[:1] | upper }}</span>
+                <input type="text" name="name" value="{{ p.name }}" style="width:130px" />
+              </span>
+            </td>
+            <td>{{ p.email }}</td>
+            <td>
+              <select name="role_id">
+                {% for r in roles %}
+                <option value="{{ r.id }}" {% if p.role_id == r.id %}selected{% endif %}>{{ r.name }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td>
+              <select name="team_id">
+                <option value="">—</option>
+                {% for t in teams %}
+                <option value="{{ t.id }}" {% if p.team_id == t.id %}selected{% endif %}>{{ t.name }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td class="t-num">
+              <input type="number" name="normal_load" value="{{ p.normal_load }}" min="1" max="20" style="width:64px" />
+            </td>
+            <td>
+              {% if p.password_hash %}
+                {% if p.must_change_password %}
+                <span class="state-pill" style="color:var(--warn)">must change</span>
+                {% else %}
+                <span class="state-pill">yes</span>
+                {% endif %}
+              {% else %}
+                <span class="state-pill" style="color:var(--text-3)">no login</span>
+              {% endif %}
+            </td>
+            <td class="t-num">{{ p.last_login_at.strftime('%d %b %H:%M') if p.last_login_at else '—' }}</td>
+            <td>
+              <input type="checkbox" name="active" {% if p.active %}checked{% endif %}
+                     {% if p.id == me.id %}disabled title="You cannot deactivate yourself"{% endif %} />
+            </td>
+            <td><button class="btn btn-sm" type="submit">Save</button></td>
+          </form>
+        </tr>
+        <tr style="{% if not p.active %}opacity:.5{% endif %}">
+          <td colspan="9" style="padding-top:0">
+            <form method="post" action="/people/{{ p.id }}/reset-password" class="inline-reset">
+              <span class="fld-note">Set a new password for {{ p.name }}:</span>
+              <input type="password" name="password" minlength="10" placeholder="at least 10 characters"
+                     autocomplete="new-password" />
+              <button class="btn btn-sm" type="submit">Reset</button>
+              <span class="fld-note">Signs them out everywhere.</span>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <p class="fld-note" style="max-width:70ch">
+    Nobody is ever deleted. Deactivating ends their access immediately and keeps
+    every record of what they did — the history is what every figure in this
+    product is computed from.
+  </p>
+</div>
+</body>
+</html>

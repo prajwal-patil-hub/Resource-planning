@@ -1,0 +1,23 @@
+{% import "_auth_page.html" as auth %}
+{{ auth.page("Set up Work Register", "Nobody can sign in yet. Create the first administrator — this screen disappears afterwards.") }}
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form class="auth-form" method="post" action="/setup">
+    <label class="fld">
+      <span>Your name</span>
+      <input type="text" name="name" required autofocus />
+    </label>
+    <label class="fld">
+      <span>Email</span>
+      <input type="email" name="email" autocomplete="username" required />
+    </label>
+    <label class="fld">
+      <span>Password <em>(at least 10 characters)</em></span>
+      <input type="password" name="password" autocomplete="new-password" required minlength="10" />
+    </label>
+    <button class="btn btn-primary" type="submit">Create administrator</button>
+    <p class="fld-note">
+      Length matters more than symbols. A short phrase you will remember beats
+      <code>P@ssw0rd!</code>, which people write down.
+    </p>
+  </form>
+{{ auth.endpage() }}

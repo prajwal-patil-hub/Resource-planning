@@ -1,31 +1,39 @@
 """HTTP API and server-rendered pages.
 
-Feature 1 — record a work item — as a vertical slice: database, business logic,
-API, UI, tests.
-
-Authentication is deliberately not built yet. `X-Actor-Id` stands in for the
-signed-in user so the vertical slice is complete and testable without dragging
-identity, sessions and password policy into the first feature. Recorded as a
-known gap in PROJECT_STATE.
+Every write is attributed to the signed-in person. Until Feature 2 this was an
+`X-Actor-Id` header defaulting to person #1, which meant the audit trail — the
+product's entire data source under ADR-001 — was attributable to nobody.
 """
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Form, Header, HTTPException, Query, Request
+from fastapi import Cookie, Depends, FastAPI, Form, HTTPException, Query, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
+from app.access import Forbidden, Permission, can, require, visible_team_ids
+from app.auth import (
+    SESSION_COOKIE,
+    AuthError,
+    anyone_can_sign_in,
+    authenticate,
+    end_session,
+    person_for_token,
+    revoke_all_for,
+    set_password,
+    start_session,
+)
 from app.config import settings
 from app.db import get_session
 from app.flow.load import load_for_team
 from app.flow.timeline import build_timeline, format_duration, state_label
-from app.models import Client, Person, Team, WorkItem, WorkItemParticipant, WorkItemType
+from app.models import Client, Person, Role, Team, WorkItem, WorkItemParticipant, WorkItemType
 from app.work.lifecycle import LABELS, OPEN_STATES, IllegalTransition, State
 from app.work.service import (
     EDITABLE,
@@ -46,8 +54,47 @@ app = FastAPI(title="Resource Planning", version="0.1.0")
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "web" / "static")), name="static")
 
 
-def actor(x_actor_id: int = Header(default=1, alias="X-Actor-Id")) -> int:
-    return x_actor_id
+class NeedsLogin(Exception):
+    """Raised by the auth dependency; handled below as a redirect.
+
+    A custom exception rather than HTTPException(303) because FastAPI renders
+    HTTPException as JSON, and a browser hitting a page while signed out should
+    be sent to the sign-in screen, not shown a JSON body.
+    """
+
+    def __init__(self, next_url: str = "/"):
+        self.next_url = next_url
+
+
+def signed_in(
+    request: Request,
+    rp_session: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+    session: Session = Depends(get_session),
+) -> Person:
+    """The signed-in person. One dependency, so no route can forget to check."""
+    person = person_for_token(session, rp_session)
+    if person is None:
+        raise NeedsLogin(str(request.url.path))
+    return person
+
+
+def signed_in_id(person: Person = Depends(signed_in)) -> int:
+    return person.id
+
+
+templates.env.globals["can"] = can
+templates.env.globals["Permission"] = Permission
+
+
+@app.exception_handler(NeedsLogin)
+async def _needs_login(request: Request, exc: NeedsLogin):
+    target = "/login" + (f"?next={exc.next_url}" if exc.next_url not in ("/", "") else "")
+    return RedirectResponse(target, status_code=303)
+
+
+@app.exception_handler(Forbidden)
+async def _forbidden(request: Request, exc: Forbidden):
+    return templates.TemplateResponse(request, "forbidden.html", {"message": str(exc)}, status_code=403)
 
 
 # --------------------------------------------------------------------------
@@ -109,7 +156,7 @@ def _to_out(session: Session, item: WorkItem) -> WorkItemOut:
 def api_create(
     payload: CreateWorkItem,
     session: Session = Depends(get_session),
-    actor_id: int = Depends(actor),
+    actor_id: int = Depends(signed_in_id),
 ) -> WorkItemOut:
     try:
         item = create_work_item(
@@ -145,7 +192,7 @@ def api_transition(
     item_id: int,
     payload: TransitionRequest,
     session: Session = Depends(get_session),
-    actor_id: int = Depends(actor),
+    actor_id: int = Depends(signed_in_id),
 ) -> WorkItemOut:
     item = session.get(WorkItem, item_id)
     if item is None:
@@ -172,7 +219,7 @@ def api_assign(
     item_id: int,
     person_id: int,
     session: Session = Depends(get_session),
-    actor_id: int = Depends(actor),
+    actor_id: int = Depends(signed_in_id),
 ) -> WorkItemOut:
     item = session.get(WorkItem, item_id)
     if item is None:
@@ -207,7 +254,7 @@ def api_update(
     item_id: int,
     payload: UpdateWorkItem,
     session: Session = Depends(get_session),
-    actor_id: int = Depends(actor),
+    actor_id: int = Depends(signed_in_id),
 ) -> WorkItemOut:
     item = session.get(WorkItem, item_id)
     if item is None:
@@ -429,13 +476,21 @@ def page_board(
     sort: str = "priority",
     dir: str = "asc",
     team: list[int] = Query(default=[]),
+    me: Person = Depends(signed_in),
     session: Session = Depends(get_session),
 ):
-    teams = list(session.scalars(select(Team).where(Team.active.is_(True)).order_by(Team.name)))
+    all_teams = list(session.scalars(select(Team).where(Team.active.is_(True)).order_by(Team.name)))
+    # RULE-011 / BR-025: you can only filter within what you are allowed to see.
+    # Narrowing the option list rather than the results means the UI never
+    # offers a choice that would silently return nothing.
+    permitted = set(visible_team_ids(me, [t.id for t in all_teams]))
+    teams = [t for t in all_teams if t.id in permitted]
+
     team_ids = _selected_team_ids(team, teams)
     all_selected = len(team_ids) == len(teams)
 
     common = {
+        "me": me,
         "view": view if view in ("board", "table") else "board",
         "people": list(session.scalars(select(Person).where(Person.active.is_(True)).order_by(Person.name))),
         "types": list(session.scalars(select(WorkItemType).where(WorkItemType.active.is_(True)).order_by(WorkItemType.sort_order))),
@@ -517,7 +572,7 @@ def page_create(
     priority: int = Form(default=2),
     view: str = Form(default="board"),
     session: Session = Depends(get_session),
-    actor_id: int = Depends(actor),
+    actor_id: int = Depends(signed_in_id),
 ):
     """The composer. Title is the only field the user must fill."""
     create_work_item(
@@ -533,7 +588,12 @@ def page_create(
 
 
 @app.get("/items/{item_id}", response_class=HTMLResponse)
-def page_item(item_id: int, request: Request, session: Session = Depends(get_session)):
+def page_item(
+    item_id: int,
+    request: Request,
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
     item = session.get(WorkItem, item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="No such work item")
@@ -563,6 +623,7 @@ def page_item(item_id: int, request: Request, session: Session = Depends(get_ses
             "people": list(session.scalars(select(Person).where(Person.active.is_(True)).order_by(Person.name))),
             "types": list(session.scalars(select(WorkItemType).where(WorkItemType.active.is_(True)).order_by(WorkItemType.sort_order))),
             "clients": list(session.scalars(select(Client).where(Client.active.is_(True)).order_by(Client.name))),
+            "me": me,
         },
     )
 
@@ -574,7 +635,7 @@ def page_transition(
     displaced_by_id: str = Form(default=""),
     note: str = Form(default=""),
     session: Session = Depends(get_session),
-    actor_id: int = Depends(actor),
+    actor_id: int = Depends(signed_in_id),
 ):
     item = session.get(WorkItem, item_id)
     if item is None:
@@ -603,7 +664,7 @@ def page_edit(
     priority: int = Form(default=2),
     due_date: str = Form(default=""),
     session: Session = Depends(get_session),
-    actor_id: int = Depends(actor),
+    actor_id: int = Depends(signed_in_id),
 ):
     """Fill in the details that were skipped at record time (D-005)."""
     item = session.get(WorkItem, item_id)
@@ -633,10 +694,276 @@ def page_assign(
     item_id: int,
     person_id: int = Form(...),
     session: Session = Depends(get_session),
-    actor_id: int = Depends(actor),
+    actor_id: int = Depends(signed_in_id),
 ):
     item = session.get(WorkItem, item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="No such work item")
     assign(session, item=item, person_id=person_id, actor_id=actor_id)
     return RedirectResponse(f"/items/{item_id}", status_code=303)
+
+# --------------------------------------------------------------------------
+# Sign in / first-run setup
+# --------------------------------------------------------------------------
+
+
+def _set_session_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        SESSION_COOKIE,
+        token,
+        httponly=True,      # JavaScript cannot read it, so XSS cannot steal it
+        samesite="lax",     # blocks cross-site form posts riding the session
+        secure=settings.cookies_secure,
+        max_age=60 * 60 * 24 * 14,
+        path="/",
+    )
+
+
+@app.get("/login", response_class=HTMLResponse)
+def page_login(request: Request, next: str = "/", session: Session = Depends(get_session)):
+    # BR-021: no configuration step. Creating the first administrator is the one
+    # unavoidable exception, so it is offered rather than documented.
+    if not anyone_can_sign_in(session):
+        return RedirectResponse("/setup", status_code=303)
+    return templates.TemplateResponse(
+        request, "login.html", {"next": next, "error": request.query_params.get("error")}
+    )
+
+
+@app.post("/login")
+def do_login(
+    request: Request,
+    email: str = Form(...),
+    password: str = Form(...),
+    next: str = Form(default="/"),
+    session: Session = Depends(get_session),
+):
+    try:
+        person = authenticate(session, email, password)
+    except AuthError as exc:
+        return RedirectResponse(f"/login?error={exc}", status_code=303)
+
+    token = start_session(session, person, user_agent=request.headers.get("user-agent", ""))
+    target = "/change-password" if person.must_change_password else (next or "/")
+    response = RedirectResponse(target, status_code=303)
+    _set_session_cookie(response, token)
+    return response
+
+
+@app.post("/logout")
+def do_logout(
+    rp_session: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+    session: Session = Depends(get_session),
+):
+    end_session(session, rp_session)
+    response = RedirectResponse("/login", status_code=303)
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    return response
+
+
+@app.get("/setup", response_class=HTMLResponse)
+def page_setup(request: Request, session: Session = Depends(get_session)):
+    if anyone_can_sign_in(session):
+        return RedirectResponse("/login", status_code=303)
+    return templates.TemplateResponse(
+        request, "setup.html", {"error": request.query_params.get("error")}
+    )
+
+
+@app.post("/setup")
+def do_setup(
+    request: Request,
+    name: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    session: Session = Depends(get_session),
+):
+    """Create the first administrator. Only reachable while none exists."""
+    if anyone_can_sign_in(session):
+        # Guards against a second call racing the first — otherwise anyone could
+        # mint themselves an admin by hitting this endpoint.
+        return RedirectResponse("/login", status_code=303)
+
+    admin_role = session.scalar(select(Role).where(Role.code == "ADMIN"))
+    default_team = session.scalar(select(Team).order_by(Team.id).limit(1))
+    email_clean = email.strip().lower()
+
+    existing = session.scalar(select(Person).where(func.lower(Person.email) == email_clean))
+    person = existing or Person(
+        name=name.strip(),
+        email=email_clean,
+        role_id=admin_role.id,
+        team_id=default_team.id if default_team else None,
+        normal_load=3,
+        active=True,
+    )
+    if existing:
+        # Someone already in the directory is promoted rather than duplicated.
+        person.role_id = admin_role.id
+        person.active = True
+    else:
+        session.add(person)
+    session.flush()
+
+    try:
+        set_password(session, person, password)
+    except AuthError as exc:
+        session.rollback()
+        return RedirectResponse(f"/setup?error={exc}", status_code=303)
+
+    token = start_session(session, person, user_agent=request.headers.get("user-agent", ""))
+    response = RedirectResponse("/", status_code=303)
+    _set_session_cookie(response, token)
+    return response
+
+
+@app.get("/change-password", response_class=HTMLResponse)
+def page_change_password(request: Request, me: Person = Depends(signed_in)):
+    return templates.TemplateResponse(
+        request, "change_password.html", {"me": me, "error": request.query_params.get("error")}
+    )
+
+
+@app.post("/change-password")
+def do_change_password(
+    password: str = Form(...),
+    confirm: str = Form(...),
+    rp_session: str | None = Cookie(default=None, alias=SESSION_COOKIE),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    if password != confirm:
+        return RedirectResponse("/change-password?error=Those two do not match.", status_code=303)
+    try:
+        set_password(session, me, password)
+    except AuthError as exc:
+        return RedirectResponse(f"/change-password?error={exc}", status_code=303)
+
+    # Every other session for this person ends — a password change is what you
+    # do when you think someone else has your access.
+    revoke_all_for(session, me.id)
+    token = start_session(session, me)
+    response = RedirectResponse("/", status_code=303)
+    _set_session_cookie(response, token)
+    return response
+
+
+# --------------------------------------------------------------------------
+# People
+# --------------------------------------------------------------------------
+
+
+@app.get("/people", response_class=HTMLResponse)
+def page_people(request: Request, me: Person = Depends(signed_in), session: Session = Depends(get_session)):
+    require(me, Permission.MANAGE_PEOPLE)
+    return templates.TemplateResponse(
+        request,
+        "people.html",
+        {
+            "me": me,
+            "people": list(session.scalars(select(Person).order_by(Person.active.desc(), Person.name))),
+            "roles": list(session.scalars(select(Role).where(Role.active.is_(True)).order_by(Role.id))),
+            "teams": list(session.scalars(select(Team).where(Team.active.is_(True)).order_by(Team.name))),
+            "error": request.query_params.get("error"),
+            "notice": request.query_params.get("notice"),
+        },
+    )
+
+
+@app.post("/people")
+def do_add_person(
+    name: str = Form(...),
+    email: str = Form(...),
+    role_id: int = Form(...),
+    team_id: str = Form(default=""),
+    normal_load: int = Form(default=3),
+    password: str = Form(default=""),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    require(me, Permission.MANAGE_PEOPLE)
+    email_clean = email.strip().lower()
+    if session.scalar(select(Person).where(func.lower(Person.email) == email_clean)):
+        return RedirectResponse("/people?error=Someone already has that email.", status_code=303)
+
+    person = Person(
+        name=name.strip(),
+        email=email_clean,
+        role_id=role_id,
+        team_id=int(team_id) if team_id else None,
+        normal_load=max(1, min(20, normal_load)),
+        active=True,
+    )
+    session.add(person)
+    session.flush()
+
+    if password:
+        try:
+            # They must change it at first sign-in: a password chosen by someone
+            # else is known by someone else.
+            set_password(session, person, password, must_change=True)
+        except AuthError as exc:
+            session.rollback()
+            return RedirectResponse(f"/people?error={exc}", status_code=303)
+        return RedirectResponse("/people?notice=Added. They must change the password at first sign-in.", status_code=303)
+
+    return RedirectResponse("/people?notice=Added to the directory. No login yet.", status_code=303)
+
+
+@app.post("/people/{person_id}")
+def do_edit_person(
+    person_id: int,
+    name: str = Form(...),
+    role_id: int = Form(...),
+    team_id: str = Form(default=""),
+    normal_load: int = Form(default=3),
+    active: str = Form(default=""),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    require(me, Permission.MANAGE_PEOPLE)
+    person = session.get(Person, person_id)
+    if person is None:
+        raise HTTPException(status_code=404, detail="No such person")
+
+    now_active = active == "on"
+    if person.id == me.id and not now_active:
+        # Locking the last admin out of their own system is not a state anyone
+        # intends to reach.
+        return RedirectResponse("/people?error=You cannot deactivate yourself.", status_code=303)
+
+    person.name = name.strip()
+    person.role_id = role_id
+    person.team_id = int(team_id) if team_id else None
+    person.normal_load = max(1, min(20, normal_load))
+
+    if person.active and not now_active:
+        person.active = False
+        person.left_on = datetime.now(UTC).date()
+        # INV-11: never deleted. Access ends immediately; history stays intact.
+        revoke_all_for(session, person.id)
+    elif not person.active and now_active:
+        person.active = True
+        person.left_on = None
+
+    session.flush()
+    return RedirectResponse("/people?notice=Saved.", status_code=303)
+
+
+@app.post("/people/{person_id}/reset-password")
+def do_reset_password(
+    person_id: int,
+    password: str = Form(...),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    require(me, Permission.MANAGE_PEOPLE)
+    person = session.get(Person, person_id)
+    if person is None:
+        raise HTTPException(status_code=404, detail="No such person")
+    try:
+        set_password(session, person, password, must_change=True)
+    except AuthError as exc:
+        return RedirectResponse(f"/people?error={exc}", status_code=303)
+    revoke_all_for(session, person.id)
+    return RedirectResponse("/people?notice=Password reset. They must change it at next sign-in.", status_code=303)

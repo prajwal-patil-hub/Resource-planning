@@ -81,8 +81,31 @@ class Person(Base):
     joined_on: Mapped[date | None] = mapped_column(Date)
     left_on: Mapped[date | None] = mapped_column(Date)
 
+    # Credentials. Nullable because a person can exist in the directory before
+    # they have a login — being in the org chart is not being a user.
+    password_hash: Mapped[str | None] = mapped_column(Text)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    failed_logins: Mapped[int] = mapped_column(SmallInteger, default=0)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     role: Mapped[Role] = relationship(lazy="joined")
     team: Mapped[Team | None] = relationship(lazy="joined")
+
+
+class UserSession(Base):
+    """A live login. A row rather than a self-contained cookie, so access can
+    actually be revoked — see app/auth.py."""
+
+    __tablename__ = "user_session"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    token_hash: Mapped[str] = mapped_column(Text)
+    person_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("person.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    user_agent: Mapped[str | None] = mapped_column(Text)
 
 
 class Absence(Base):

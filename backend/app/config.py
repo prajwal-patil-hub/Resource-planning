@@ -16,6 +16,9 @@ class Settings:
     stale_after_days: int = 3
     # RULE-013: refuse to forecast from fewer than this many comparable items.
     min_sample_for_forecast: int = 10
+    #: Off for local HTTP development; MUST be on in production, or the session
+    #: cookie travels in clear text.
+    cookies_secure: bool = False
 
     @staticmethod
     def from_env() -> "Settings":
@@ -26,6 +29,7 @@ class Settings:
             ),
             stale_after_days=int(os.environ.get("STALE_AFTER_DAYS", "3")),
             min_sample_for_forecast=int(os.environ.get("MIN_SAMPLE_FOR_FORECAST", "10")),
+            cookies_secure=os.environ.get("COOKIES_SECURE", "0") == "1",
         )
 
 

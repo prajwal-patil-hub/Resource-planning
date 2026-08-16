@@ -452,7 +452,14 @@ body {
    Controls
    ========================================================================== */
 
-input[type="text"], select, textarea {
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="search"],
+select,
+textarea {
   font-family: var(--sans);
   font-size: 0.88rem;
   color: var(--text);
@@ -464,9 +471,9 @@ input[type="text"], select, textarea {
   transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
 
-input[type="text"]::placeholder { color: var(--text-3); }
+input::placeholder { color: var(--text-3); }
 
-input[type="text"]:focus, select:focus, textarea:focus {
+input:focus, select:focus, textarea:focus {
   border-color: var(--input-focus-border);
   box-shadow: 0 0 0 3px var(--focus-ring-soft);
 }
@@ -1146,18 +1153,77 @@ table.hist td:first-child { color: var(--text); }
 
 .fld > span em { font-style: normal; text-transform: none; letter-spacing: 0; opacity: 0.75; }
 
-.fld input[type="date"] {
-  font-family: var(--sans);
-  font-size: 0.85rem;
-  color: var(--text);
-  background: var(--glass-fill-sunk);
-  border: 1px solid var(--glass-border-soft);
-  border-radius: var(--radius-sm);
-  padding: 8px 11px;
-}
+.fld input[type="date"] { font-size: 0.85rem; padding: 8px 11px; }
+/* Dark themes need the native picker icon inverted or it disappears. */
+:root:not([data-theme="light"]) input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.85); }
+:root[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.85); }
 
 .fld-row { display: flex; gap: 10px; flex-wrap: wrap; }
 
 .fld-note { font-size: 0.71rem; color: var(--text-3); margin: 2px 0 0; }
 
 .edit-form .btn { align-self: flex-start; }
+
+/* ==========================================================================
+   Signed-out screens and identity
+   ========================================================================== */
+
+.auth-shell {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.auth-card { width: min(420px, 100%); padding: 30px; }
+
+.auth-title { font-size: 1.35rem; margin: 0 0 8px; letter-spacing: -0.012em; }
+.auth-sub { font-size: 0.88rem; color: var(--text-2); margin: 0 0 20px; line-height: 1.5; }
+
+.auth-form { display: flex; flex-direction: column; gap: 14px; }
+.auth-form .btn { margin-top: 4px; }
+.auth-form input { font-size: 0.92rem; padding: 11px 13px; width: 100%; }
+/* .fld grows to fill a horizontal .fld-row; inside this column-flex form that
+   makes every field stretch and leaves gaping holes between them. */
+.auth-form .fld { flex: none; }
+.auth-form code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  background: var(--glass-fill-sunk);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.whoami {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 6px;
+  border-radius: 999px;
+  background: var(--glass-fill-sunk);
+  border: 1px solid var(--glass-border-soft);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.whoami-name { color: var(--text); }
+.whoami-role { color: var(--text-3); font-size: 0.72rem; }
+
+.notice {
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--glass-fill-sunk);
+  border: 1px solid var(--glass-border-soft);
+  color: var(--text-2);
+  font-size: 0.83rem;
+  animation: rise-in 300ms var(--ease) both;
+}
+
+/* People table: form controls sit inside cells, so they need to be compact. */
+.grid input, .grid select { font-size: 0.8rem; padding: 6px 9px; }
+
+.grid tr > form { display: contents; }
+
+.inline-reset { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.inline-reset input { flex: 0 1 220px; font-size: 0.8rem; padding: 6px 9px; }
+.inline-reset .fld-note { margin: 0; }

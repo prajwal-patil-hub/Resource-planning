@@ -2,7 +2,7 @@
 {{ shell.head("Work Register — Board") }}
 
 <div class="shell">
-  {{ shell.topbar(view) }}
+  {{ shell.topbar(view, me) }}
   {{ shell.loadstrip(loads, teams, selected_teams, all_teams, view, sort|default('priority'), dir|default('asc')) }}
 
   <main class="board">
