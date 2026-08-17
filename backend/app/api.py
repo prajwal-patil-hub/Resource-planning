@@ -36,11 +36,13 @@ from app.db import get_session
 from app.flow.attention import build_attention
 from app.flow.calendar import load_calendar
 from app.flow.load import assignment_options, load_for_team
+from app.flow.reporting import build_client_reports, by_type_totals
 from app.flow.statistics import (
     DEFAULT_WINDOW_DAYS,
     MIN_SAMPLE,
     Cohort,
     accountable_so_far,
+    collect_samples,
     load_statistics,
     project,
 )
@@ -1433,5 +1435,49 @@ def page_flow(
             "teams": teams,
             "selected_teams": set(team_ids) if not all_selected else set(),
             "all_teams": all_selected,
+        },
+    )
+
+
+@app.get("/clients", response_class=HTMLResponse)
+def page_clients(
+    request: Request,
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    """Where the work goes, by client and by kind (BR-019).
+
+    Scoped by team where the viewer cannot see everything: a client report names
+    commercial volumes, so it follows the same visibility rule as the work it is
+    built from rather than quietly reaching wider.
+    """
+    all_team_ids = list(session.scalars(select(Team.id).where(Team.active.is_(True))))
+    permitted = visible_team_ids(me, all_team_ids)
+    sees_everything = set(permitted) == set(all_team_ids)
+
+    calendar = load_calendar(session)
+    samples = collect_samples(session, calendar)
+
+    report = build_client_reports(
+        session,
+        samples,
+        team_ids=None if sees_everything else permitted,
+        window_days=DEFAULT_WINDOW_DAYS,
+    )
+    type_names = {row.id: row.name for row in session.scalars(select(WorkItemType))}
+
+    return templates.TemplateResponse(
+        request,
+        "clients.html",
+        {
+            "me": me,
+            "view": "clients",
+            "report": report,
+            # Built from the same scoped set the client table uses, so the two
+            # halves of the page cannot disagree about how much work there was.
+            "by_type": by_type_totals(
+                [s for r in report.reports for s in r.samples], type_names
+            ),
+            "min_sample": MIN_SAMPLE,
         },
     )

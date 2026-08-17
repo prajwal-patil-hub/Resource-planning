@@ -1,0 +1,194 @@
+{% import "_shell.html" as shell %}
+{{ shell.head("Where the work goes") }}
+
+<div class="shell" style="padding-bottom:40px">
+  {{ shell.topbar('clients', me) }}
+  {{ shell.banner(request) }}
+
+  <section class="panel glass anim-rise" style="animation-delay:40ms">
+    <h2>Where the work goes</h2>
+
+    {# The most important paragraph on the page. A manager will read any
+       percentage next to a client name as a share of the team's cost, and it is
+       not one — under ADR-001 there is no effort data and there never will be.
+       Saying so plainly is cheaper than being misread once. #}
+    <p class="fld-note" style="margin-top:0;max-width:78ch">
+      These are counts of work and how long that work was <strong>alive</strong>,
+      measured in working time. They are <strong>not</strong> person-hours and
+      not a share of the team's cost — nobody records effort here, and two items
+      open across the same week count twice while costing the team one week.
+      Read them as demand and duration, not as a timesheet.
+    </p>
+
+    {% if report.scoped %}
+    <p class="fld-note" style="max-width:78ch">
+      <strong>Showing your teams only.</strong> These totals cover work owned
+      inside the teams you can see, plus anything nobody owns. Someone who can
+      see every team will get larger numbers on this page — that is the same
+      figure over a wider set, not a disagreement.
+    </p>
+    {% endif %}
+
+    {% if report.total_items == 0 %}
+    <p class="empty">
+      No finished work in the last {{ report.window_days }} days, so there is
+      nothing to attribute yet. This fills itself as work completes.
+    </p>
+    {% else %}
+    <div class="measures">
+      <div class="measure">
+        <div class="measure-label">Clients with finished work</div>
+        <div class="measure-value">{{ report.reports | selectattr('finished') | list | length }}</div>
+        <div class="measure-note">In the last {{ report.window_days }} days.</div>
+      </div>
+      <div class="measure">
+        <div class="measure-label">Finished items</div>
+        <div class="measure-value">{{ report.total_items }}</div>
+        <div class="measure-note">Every one attributed below.</div>
+      </div>
+      <div class="measure ours">
+        <div class="measure-label">Total time alive</div>
+        <div class="measure-value">{{ report.total_elapsed | duration }}</div>
+        <div class="measure-note">Working time summed across items, not team hours.</div>
+      </div>
+      <div class="measure">
+        <div class="measure-label">Of that, spent waiting on clients</div>
+        <div class="measure-value">{{ (report.overall_their_share * 100) | round | int }}%</div>
+        <div class="measure-note">
+          {{ report.total_theirs | duration }} where the clock was stopped on us
+          (RULE-005).
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </section>
+
+  {% if report.total_items > 0 or report.reports %}
+  <section class="panel glass anim-rise" style="animation-delay:80ms">
+    <h2>By client</h2>
+    <p class="fld-note" style="margin-top:0">
+      The <em>waiting on them</em> column is the one worth arguing with. A client
+      whose work takes three weeks, two of which are their own silence, is a
+      different conversation from one whose work takes three weeks of ours — and
+      both looked identical before this page existed.
+    </p>
+    <table class="hist">
+      <thead>
+        <tr>
+          <th>Client</th>
+          <th class="t-num">Finished</th>
+          <th class="t-num">Share</th>
+          <th class="t-num">Open now</th>
+          <th class="t-num">Time alive</th>
+          <th class="t-num">With us</th>
+          <th class="t-num">Waiting on them</th>
+          <th class="t-num">Half within</th>
+          <th>What they send</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in report.reports %}
+      <tr>
+        <td title="{{ r.explanation(report.total_items) }}"><strong>{{ r.name }}</strong></td>
+        <td class="t-num">{{ r.finished }}</td>
+        <td class="t-num">
+          {% if r.finished %}
+          <span class="share">
+            <span class="share-bar" style="width:{{ (r.share_of(report.total_items) * 100) | round }}%"></span>
+            <span class="share-num">{{ (r.share_of(report.total_items) * 100) | round | int }}%</span>
+          </span>
+          {% else %}—{% endif %}
+        </td>
+        <td class="t-num">{{ r.open_now or '—' }}</td>
+        <td class="t-num">{{ r.total_elapsed | duration if r.finished else '—' }}</td>
+        <td class="t-num">{{ r.ours | duration if r.finished else '—' }}</td>
+        {# The figure itself is a direct measurement — "of the 12 days these
+           items were alive, 7 were client wait" is simply true, however few
+           items there are — so it is always shown. The *emphasis* is not: a
+           colour saying "this client is slow" is an inference about their
+           habits, and that needs the same sample any other inference does
+           (RULE-013). Number always, judgement only when earned. #}
+        <td class="t-num">
+          {% if r.finished %}
+          <span {% if r.their_share > 0.3 and r.cohort.is_sufficient %}style="color:var(--warn)"{% endif %}
+                title="{{ r.theirs | duration }} of {{ r.total_elapsed | duration }} elapsed working time was spent waiting on {{ r.name }}, across {{ r.finished }} finished item(s){% if not r.cohort.is_sufficient %} — too few to call it a pattern{% endif %}.">
+            {{ r.theirs | duration }} · {{ (r.their_share * 100) | round | int }}%
+          </span>
+          {% else %}—{% endif %}
+        </td>
+        {# RULE-013 applies to a per-client cycle time exactly as it does to a
+           forecast. A median drawn from two items is an anecdote either way. #}
+        <td class="t-num">
+          {% if r.cohort.is_sufficient %}{{ r.cohort.percentile(0.5) | duration }}
+          {% else %}<span style="color:var(--text-3)">not yet</span>{% endif %}
+        </td>
+        <td class="mix">{{ r.mix_summary }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9" class="empty">No clients recorded yet.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p class="fld-note">
+      <em>Half within</em> is blank where a client has fewer than {{ min_sample }}
+      finished items — the same rule that governs every other figure in the
+      product (RULE-013). Hover a client name for the full workings.
+    </p>
+  </section>
+  {% endif %}
+
+  <div class="detail">
+    <section class="panel glass anim-rise" style="animation-delay:120ms">
+      <h2>By kind of work</h2>
+      <p class="fld-note" style="margin-top:0">
+        The same question asked the other way. A team spending most of its time
+        on bugs is in a different position from one spending it on change
+        requests, whatever the client split says.
+      </p>
+      <table class="hist">
+        <thead><tr><th>Kind</th><th class="t-num">Finished</th><th class="t-num">Share</th><th class="t-num">Time alive</th></tr></thead>
+        <tbody>
+        {% for name, count, elapsed in by_type %}
+        <tr>
+          <td>{{ name }}</td>
+          <td class="t-num">{{ count }}</td>
+          <td class="t-num">
+            <span class="share">
+              <span class="share-bar" style="width:{{ (count / report.total_items * 100) | round if report.total_items else 0 }}%"></span>
+              <span class="share-num">{{ (count / report.total_items * 100) | round | int if report.total_items else 0 }}%</span>
+            </span>
+          </td>
+          <td class="t-num">{{ elapsed | duration }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="empty">Nothing finished yet.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="panel glass anim-rise" style="animation-delay:160ms">
+      <h2>How to read this without being wrong</h2>
+      <p class="fld-note" style="margin-top:0;line-height:1.55">
+        <strong>Share</strong> is a share of finished items, not of the team's
+        time or money. Ten trivial items and ten hard ones both read as ten.
+        <br /><br />
+        <strong>Time alive</strong> sums how long each item existed in working
+        hours. It is a measure of duration and commitment, not of labour: an
+        item can sit open for a fortnight while consuming an afternoon.
+        <br /><br />
+        <strong>Waiting on them</strong> is the most defensible number here,
+        because it comes from a state somebody explicitly set. If it looks wrong
+        for a client, the fix is to record <em>waiting on client</em> when it
+        happens — not to adjust the report.
+        <br /><br />
+        There is no cost or revenue anywhere on this page. The product has no
+        access to either, and inventing a rate to multiply by would turn a set of
+        honest measurements into a made-up number that reads as an accounting
+        fact.
+      </p>
+    </section>
+  </div>
+</div>
+</body>
+</html>

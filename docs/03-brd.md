@@ -374,6 +374,8 @@ decided it is marked OPEN rather than guessed.
 | **RULE-015 (OPEN)** | Who may set priority, and whether P0 triggers preemption automatically or a human always decides — see OPEN-2. |
 | **RULE-016** | Work may be recorded as having happened up to 14 days in the past, and never in the future. Beyond that window the entry is refused with its reason. |
 | **RULE-017** | A person may only be assigned work from a team they are permitted to assign into. The check is enforced at the point of assignment, not only in the list of names offered. |
+| **RULE-018** | No report presents elapsed item time as effort, cost, capacity or person-hours. The product holds no effort data and must never imply that it does. |
+| **RULE-019** | A measurement may be shown at any sample size; an inference drawn from it may not. Emphasis, ranking and percentiles wait for the minimum sample (RULE-013); a directly measured quantity does not. |
 
 > **On RULE-013.** Forecasting from three completed items produces a confident
 > number with no basis. Refusing to answer until there is enough history is a
@@ -390,6 +392,19 @@ decided it is marked OPEN rather than guessed.
 > dropdown is a convenience and not a control — the form beneath it accepts any
 > identifier that is posted. The rule held for what someone could *see* and was
 > silent on what they could *do*, which is the half that matters.
+
+> **On RULE-018.** ADR-001 removed effort data from the product permanently, so
+> "where the work goes" can only be answered in items and elapsed duration. Two
+> items open across the same week contribute two item-weeks while costing the
+> team one week — a percentage next to a client's name is a share of *demand*,
+> never of cost. A manager will read it as cost unless told plainly, so the
+> report says so in its own first paragraph rather than in a footnote.
+
+> **On RULE-019.** The distinction that keeps the reports honest without making
+> them useless. "Of the 12 days these items were alive, 7 were spent waiting on
+> the client" is true however few items there are, and withholding it would be
+> false caution. "This client is slow" is an inference about their habits, and
+> that needs a sample. So the figure is always shown and the emphasis is not.
 
 ---
 

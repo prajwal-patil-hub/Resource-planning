@@ -1716,3 +1716,21 @@ dialog.sheet[open] { animation: rise-in 240ms var(--ease) both; }
 @media (prefers-reduced-motion: reduce) {
   .bar-fill { animation: none; }
 }
+
+/* Share bars, inline in a table cell — a percentage and its magnitude in one
+   glance, without a second column or a chart library. */
+.share { display: inline-flex; align-items: center; gap: 7px; justify-content: flex-end; }
+
+.share-bar {
+  display: block;
+  height: 7px;
+  min-width: 2px;
+  border-radius: 999px;
+  background: var(--info);
+  flex: none;
+  max-width: 64px;
+}
+
+.share-num { font-variant-numeric: tabular-nums; min-width: 30px; text-align: right; }
+
+.mix { font-size: 0.78rem; color: var(--text-2); }

@@ -29,7 +29,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.flow.calendar import WorkingCalendar, resolve_optional_days, working_duration
-from app.models import StateTransition, WorkItem
+from app.models import Person, StateTransition, WorkItem, WorkItemParticipant
 from app.work.lifecycle import State
 
 #: Fewest comparable finished items required before this module will answer.
@@ -59,6 +59,13 @@ class Sample:
     elapsed: timedelta
     #: The same, less time spent waiting on the client (RULE-005).
     accountable: timedelta
+    client_id: int | None = None
+    #: Working time the clock was stopped because we were waiting on them.
+    #: Kept rather than only subtracted — BR-019 asks where the time went, and
+    #: "seven of those twelve days were them" is the answer most worth having.
+    client_wait: timedelta = timedelta()
+    #: Team of the owner at the point it finished. `None` where nobody owned it.
+    team_id: int | None = None
 
 
 @dataclass
@@ -172,8 +179,19 @@ def collect_samples(
             StateTransition.occurred_at,
             WorkItem.type_id,
             WorkItem.priority,
+            WorkItem.client_id,
+            Person.team_id,
         )
         .join(WorkItem, WorkItem.id == StateTransition.work_item_id)
+        # The owner's team, so aggregates can be scoped the same way the work
+        # itself is (RULE-011). Left-joined: work nobody owned still counts.
+        .outerjoin(
+            WorkItemParticipant,
+            (WorkItemParticipant.work_item_id == WorkItem.id)
+            & (WorkItemParticipant.participation == "OWNER")
+            & (WorkItemParticipant.to_ts.is_(None)),
+        )
+        .outerjoin(Person, Person.id == WorkItemParticipant.person_id)
         .where(
             WorkItem.state == State.DONE.value,
             StateTransition.occurred_at >= since,
@@ -225,6 +243,9 @@ def collect_samples(
                 finished_at=finished,
                 elapsed=elapsed,
                 accountable=max(timedelta(), elapsed - client_wait),
+                client_id=events[0].client_id,
+                client_wait=client_wait,
+                team_id=events[0].team_id,
             )
         )
 

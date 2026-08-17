@@ -1,10 +1,11 @@
 # Build Status — what is actually built
 
-**Date:** 2026-08-16 (revised after Feature 6)
+**Date:** 2026-08-16 (revised after Feature 7)
 **Question answered:** "Is everything built?"
-**Short answer:** Not yet, but close. Roughly **92%** of the v1 scope defined in
-`03-brd.md`, up from 45% at the first audit. **Every business objective
-BO-1..BO-6 is now met**; what remains is convenience and operations.
+**Short answer:** Every business requirement in `03-brd.md` is now built —
+roughly **96%** of v1 scope, up from 45% at the first audit. **All six business
+objectives BO-1..BO-6 are met.** What remains is reference-data screens, search
+and deployment: convenience and operations, not product.
 
 This document exists because "is it done?" deserves a measured answer rather
 than an impression. Every business requirement from the BRD is listed with its
@@ -24,9 +25,9 @@ real state, verified against the running code — not from memory.
 
 | | Count | Was (first audit) |
 |---|---|---|
-| Built | 22 | 11 |
+| Built | 23 | 11 |
 | Partial | 2 | 6 |
-| Not built | 1 | 8 |
+| Not built | 0 | 8 |
 | **Total v1 business requirements** | **25** | 25 |
 
 **All seven domain services from `08-domain-model.md` now exist**: `LoadService`,
@@ -36,7 +37,7 @@ real state, verified against the running code — not from memory.
 `ExplanationService` (distributed — every figure carries its own derivation
 rather than a central service being asked for one).
 
-**Test count:** 160, all passing against real PostgreSQL 16.
+**Test count:** 180, all passing against real PostgreSQL 16.
 
 ---
 
@@ -79,7 +80,7 @@ rather than a central service being asked for one).
 | BR-016 | See load and absence before assigning | **Built** | The assignee dropdown reads "Priya — 1 of 2, 1 waiting · free" and groups anyone away under "Away today — back 20 Aug". Each option carries its derivation on hover (BR-020). It does not rank and does not refuse: work is often queued for someone due back |
 | BR-017 | Work at risk of missing its due date, flagged early | **Built** | Three signals on `/attention`: due soon and not started; history says it will not make its date; and taking longer than comparable work (RULE-009). The last two read the record rather than the calendar, and stay silent below the minimum sample |
 | BR-018 | Timing as a range with confidence, never a false date | **Built** | `/flow` — "How long" in the topbar. Median and 85th percentile of real finished work, never a date. Refuses below 8 comparable items and says how many more are needed (RULE-013). **BO-6 met** — see ADR-005 |
-| BR-019 | Where effort goes, by client and by type | **Partial** | Cycle time by work type is live on `/flow`; the by-client view and the share-of-effort breakdown are not built |
+| BR-019 | Where effort goes, by client and by type | **Built** | `/clients` — "Where it goes". Volume and share per client, time alive split into *with us* and *waiting on them* (RULE-005), the mix of work each client sends, open commitment now, and the same breakdown by kind. Scoped by team like everything else. Presents nothing as person-hours or cost (RULE-018) |
 | BR-020 | Every displayed number is explainable | **Built** | Load, the timeline, cover, every attention flag, every assignee option and every forecast carry their derivation — including which cohort a forecast was drawn from, so an answer from "Bug at P1" is distinguishable from one from "all finished work" |
 
 ### Operating constraints
@@ -98,12 +99,11 @@ rather than a central service being asked for one).
 
 Closed since the first audit: authentication, editing a work item, people and
 team management, backdated recording, assignment context, cross-team
-enforcement, forecasting. What is left:
+enforcement, forecasting, client reporting. What is left:
 
 | Gap | Why it blocks |
 |---|---|
-| **No reporting by client** | BR-019. Cycle time by type is live; where effort goes by client is not, and that is the manager-facing half |
-| **No client or work-type management** | Adding either still requires SQL |
+| **No client or work-type management** | Adding either still requires SQL — and `/clients` makes this sharper, since the report is only as good as whether items carry a client at all |
 | **No self-service password reset** | A lead must reset for you |
 | **No text search** | At a few hundred items, finding one becomes guesswork |
 | **No deployment configuration** | No HTTPS, no backups, no process supervision, no restore procedure |
@@ -136,8 +136,8 @@ Sequenced by dependency and by risk, not by ease.
 | **4** | **Attention view — stalled, unowned, uncovered** | BR-007 | **Done** | Makes the system tell you rather than wait to be asked. The daily-use screen |
 | **5** | **Recording context: backdating + assign-time load** | BR-004, BR-016, RULE-016, RULE-017 | **Done** | Both are one-screen changes, and the first protects the integrity of every number in features 6–7. Promoted above forecasting for that reason |
 | **6** | **Flow statistics and forecasting** | BR-017, BR-018, RULE-009, RULE-010, RULE-013 | **Done** | Needed ~3–4 weeks of history to mean anything, so built early to let it fill. **Closed BO-6, the last unmet business objective** — ADR-005 |
-| **7** | **Reporting by client** | BR-019 | ← **next** | The manager-facing view, and the only remaining requirement gap |
-| **8** | **Reference data management** | BR-023 | | Small |
+| **7** | **Reporting by client** | BR-019, RULE-018, RULE-019 | **Done** | The manager-facing view, and the last requirement gap |
+| **8** | **Reference data management** | BR-023, BR-024 | ← **next** | Small, and now load-bearing: the client report is only as good as whether items carry a client, and adding one still needs SQL |
 | **9** | **Search** | — | | Small |
 | **10** | **Deployment, backups, restore** | — | | Last, but before any real data exists |
 
@@ -158,4 +158,5 @@ avoid. Fix the input before building the thing that consumes it.
 | 1.0 | 2026-08-16 | First audit, against BRD v1.1 and the running code |
 | 1.1 | 2026-08-16 | Re-audited after Features 1–4. 11→17 built, 8→2 unbuilt. Plan re-ordered: recording context promoted above forecasting, with the reason recorded |
 | 1.2 | 2026-08-16 | Feature 5 built. BR-004 and BR-016 closed; RULE-016 and RULE-017 added. 17→19 built. Two defects found while verifying and fixed: the load strip leaked every team's load to a single-team user, and cancelled absences still counted as away |
+| 1.4 | 2026-08-16 | Feature 7 built. BR-019 closed — **every business requirement is now built**. RULE-018 and RULE-019 added. One inconsistency found while verifying and fixed: open-work counts were not team-scoped while the finished columns beside them were, putting two populations in one row |
 | 1.3 | 2026-08-16 | Feature 6 built. BR-017, BR-018 and BR-020 closed, BR-019 moved to partial; ADR-005 records the forecasting method. 19→22 built, **BO-1..BO-6 all met**. One self-contradiction found while verifying and fixed: the flow page printed a median drawn from two items in its largest type, which is the exact failure the page argues against |

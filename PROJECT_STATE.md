@@ -10,16 +10,17 @@
 
 ## CURRENT PHASE
 
-**Phase 4 — Implementation.** Features 1–6 built and running. 160 tests.
+**Phase 4 — Implementation.** Features 1–7 built and running. 180 tests.
 
 ## CURRENT OBJECTIVE
 
-Reporting by client (BR-019) — the last requirement gap. Everything after it is
-convenience and operations.
+Reference data management (BR-023, BR-024) — adding a client or work type still
+needs SQL, and the new client report is only as good as whether items carry a
+client at all.
 
-**Status:** 160 tests passing against real PostgreSQL 16. ~92% of v1 scope;
-22 of 25 business requirements built, 2 partial, 1 unbuilt. **All six business
-objectives BO-1..BO-6 are met.** Full audit in `docs/14-build-status.md`.
+**Status:** 180 tests passing against real PostgreSQL 16. ~96% of v1 scope;
+**every business requirement is built**, 2 partially. All six business
+objectives BO-1..BO-6 are met. Full audit in `docs/14-build-status.md`.
 
 ---
 
@@ -250,6 +251,16 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
   and the second adds nothing — "nothing has happened for four weeks" already
   explains why it outran its history, and it is the more actionable of the two.
   Two rows saying one thing is the noise D-031 forbids.
+- D-040: **No report presents elapsed item time as effort or cost** (RULE-018).
+  ADR-001 removed effort data permanently, so "where the work goes" is answered
+  in items and duration. Two items open across one week are two item-weeks and
+  one week of the team; a percentage beside a client's name is a share of
+  demand, never of cost, and the page says so in its own first paragraph.
+- D-041: **A measurement may be shown at any sample size; an inference from it
+  may not** (RULE-019). "7 of these 12 days were client wait" is true however
+  few items there are. "This client is slow" is a claim about their habits and
+  needs the sample RULE-013 requires. So the figure always shows and the
+  warning colour waits.
 - D-013: **Optimistic locking** for concurrent edits to one work item.
   Notably *not* needed for concurrent assignment — nothing is reserved under
   ADR-001, so two assignments simply show as higher load, which is accurate.
@@ -339,8 +350,8 @@ Ordered build plan in `docs/14-build-status.md`:
    (BR-004, BR-016, RULE-016, RULE-017)
 6. ~~Flow statistics and forecasting~~ — **DONE 2026-08-16**
    (BR-017, BR-018, RULE-009/010/013; ADR-005. Closes BO-6)
-7. **Reporting by client** ← next (BR-019)
-8. Reference data management
+7. ~~Reporting by client~~ — **DONE 2026-08-16** (BR-019, RULE-018/019)
+8. **Reference data management** ← next (BR-023, BR-024)
 9. Search
 10. Deployment, backups, restore
 
