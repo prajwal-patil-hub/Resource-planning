@@ -16,8 +16,12 @@
       {% else %}
       <span class="unowned">Unassigned</span>
       {% endif %}
-      {# BR-020: the reason travels with the flag, always. #}
-      <span class="flag-why">{{ f.why }} · <b>{{ f.measure }}</b></span>
+      {# BR-020: the reason travels with the flag, always. `detail` carries the
+         full derivation for the history-driven flags, where "why" alone is not
+         enough to argue with. #}
+      <span class="flag-why" {% if f.detail %}title="{{ f.detail }}"{% endif %}>
+        {{ f.why }} · <b>{{ f.measure }}</b>
+      </span>
     </a>
     {% endfor %}
   </div>
@@ -59,6 +63,8 @@
            'Past the date the client was given.') }}
   {{ group('Going to miss its date', attention.at_risk,
            'Due within two working days and not started. Flagged while there is still time to act.') }}
+  {{ group('Taking longer than usual', attention.overrunning,
+           'Already past the point where 85% of comparable work has finished (RULE-009). Measured against this team’s own history, not a target — hover for the workings.') }}
   {{ group('Stopped moving', attention.stalled,
            'No state change for ' ~ stale_after_days ~ '+ working days. Weekends and holidays do not count.') }}
   {{ group('Owner is away', attention.uncovered,

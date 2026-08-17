@@ -6,7 +6,7 @@ product's entire data source under ADR-001 — was attributable to nobody.
 """
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
 
@@ -36,6 +36,14 @@ from app.db import get_session
 from app.flow.attention import build_attention
 from app.flow.calendar import load_calendar
 from app.flow.load import assignment_options, load_for_team
+from app.flow.statistics import (
+    DEFAULT_WINDOW_DAYS,
+    MIN_SAMPLE,
+    Cohort,
+    accountable_so_far,
+    load_statistics,
+    project,
+)
 from app.people.absence import (
     AbsenceError,
     absences_for,
@@ -1323,11 +1331,16 @@ def page_attention(
     from app.models import OrgSetting
 
     setting = session.get(OrgSetting, 1)
+    calendar = load_calendar(session)
     attention = build_attention(
         session,
-        calendar=load_calendar(session),
+        calendar=calendar,
         team_ids=team_ids,
         stale_after_days=setting.stale_after_days if setting else settings.stale_after_days,
+        # BR-017 / RULE-009. Passing the statistics in turns on the two
+        # history-driven flags; below the minimum sample they stay silent of
+        # their own accord (RULE-013).
+        stats=load_statistics(session, calendar),
     )
     return templates.TemplateResponse(
         request,
@@ -1338,5 +1351,87 @@ def page_attention(
             "attention": attention,
             "loads": load_for_team(session, team_ids=team_ids),
             "stale_after_days": setting.stale_after_days if setting else settings.stale_after_days,
+        },
+    )
+
+
+@app.get("/flow", response_class=HTMLResponse)
+def page_flow(
+    request: Request,
+    team: list[int] = Query(default=[]),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    """How long work actually takes (BR-018, BO-6).
+
+    The whole screen is an argument against the single-date answer: it reports
+    the spread of finished work, refuses to convert it into a date, and says
+    nothing at all where the sample is too small (RULE-013).
+    """
+    all_teams = list(session.scalars(select(Team).where(Team.active.is_(True)).order_by(Team.name)))
+    permitted = visible_team_ids(me, [t.id for t in all_teams])
+    teams = [t for t in all_teams if t.id in set(permitted)]
+    team_ids = _selected_team_ids(team, teams)
+    all_selected = len(team_ids) == len(teams)
+
+    calendar = load_calendar(session)
+    stats = load_statistics(session, calendar)
+
+    type_names = {
+        row.id: row.name
+        for row in session.scalars(select(WorkItemType))
+    }
+    by_type = stats.by_type(type_names)
+
+    # Open work measured with the same ruler as the finished work it is being
+    # compared against — working time, client wait removed.
+    spent = accountable_so_far(session, calendar)
+    open_rows = []
+    for item in session.scalars(
+        select(WorkItem)
+        .where(WorkItem.state.in_([s.value for s in OPEN_STATES]))
+        .order_by(WorkItem.priority, WorkItem.id)
+    ):
+        owner = current_owner(session, item.id)
+        if team_ids and owner is not None and owner.person.team_id not in team_ids:
+            continue
+        open_rows.append(
+            {
+                "item": item,
+                "owner": owner.person.name if owner else None,
+                "projection": project(
+                    stats.forecast(
+                        type_id=item.type_id,
+                        priority=item.priority,
+                        type_name=item.type.name if item.type else None,
+                    ),
+                    spent.get(item.id, timedelta()),
+                ),
+            }
+        )
+
+    # Sorted so the items behaving unlike their history come first — the page is
+    # read top-down and the interesting rows should not be hunted for.
+    open_rows.sort(
+        key=lambda r: (not r["projection"].overrunning, r["item"].priority)
+    )
+
+    return templates.TemplateResponse(
+        request,
+        "flow.html",
+        {
+            "me": me,
+            "view": "flow",
+            "stats": stats,
+            "overall": Cohort(basis="all finished work", samples=stats.samples),
+            "by_type": by_type,
+            "insufficient": any(not c.is_sufficient for _, c in by_type),
+            "throughput": stats.throughput(),
+            "open_rows": open_rows,
+            "min_sample": MIN_SAMPLE,
+            "window_days": DEFAULT_WINDOW_DAYS,
+            "teams": teams,
+            "selected_teams": set(team_ids) if not all_selected else set(),
+            "all_teams": all_selected,
         },
     )

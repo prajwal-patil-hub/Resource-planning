@@ -1,0 +1,204 @@
+{% import "_shell.html" as shell %}
+{{ shell.head("How long work takes") }}
+
+<div class="shell" style="padding-bottom:40px">
+  {{ shell.topbar('flow', me) }}
+  {{ shell.banner(request) }}
+
+  {# BO-6. The whole screen is an argument against the single-date answer, so it
+     opens by saying what it will and will not tell you. #}
+  <section class="panel glass anim-rise" style="animation-delay:40ms">
+    <h2>How long work actually takes</h2>
+    <p class="fld-note" style="margin-top:0;max-width:76ch">
+      Every figure here is measured from work this team has finished — nobody
+      estimated anything. Times are <strong>working time</strong>: weekends,
+      holidays and any stretch spent waiting on a client are removed, because
+      none of that was ours to spend.
+      <br />
+      You will not find a predicted date anywhere on this page. A date is a
+      promise the data cannot support. A range with a stated confidence is what
+      the record can honestly produce.
+    </p>
+
+    {% if stats.samples | length == 0 %}
+    <p class="empty">
+      Nothing has finished yet, so there is nothing to measure. This page fills
+      itself as work completes — no setup needed.
+    </p>
+
+    {# RULE-013 applies to the headline figures too, and most sharply to them.
+       A page that argues against forecasting from three items, and then prints
+       a median drawn from two of them in the largest type on the screen, has
+       made the case against itself. #}
+    {% elif not overall.is_sufficient %}
+    <div class="measures">
+      <div class="measure">
+        <div class="measure-label">Finished work measured</div>
+        <div class="measure-value">{{ stats.samples | length }}</div>
+        <div class="measure-note">Items completed in the last {{ window_days }} days.</div>
+      </div>
+      <div class="measure">
+        <div class="measure-label">Still needed</div>
+        <div class="measure-value">{{ min_sample - stats.samples | length }}</div>
+        <div class="measure-note">
+          More finished items before any range is offered. {{ min_sample }} is the
+          point where one unusual item stops defining the whole picture.
+        </div>
+      </div>
+    </div>
+    <p class="fld-note" style="max-width:76ch">
+      There is deliberately no median or 85% figure above. Two finished items can
+      produce one, and it would look exactly like a well-founded number while
+      being an anecdote — which is the failure this page exists to avoid.
+    </p>
+
+    {% else %}
+    <div class="measures">
+      <div class="measure">
+        <div class="measure-label">Finished work measured</div>
+        <div class="measure-value">{{ stats.samples | length }}</div>
+        <div class="measure-note">Items completed in the last {{ window_days }} days.</div>
+      </div>
+      <div class="measure ours">
+        <div class="measure-label">Half finish within</div>
+        <div class="measure-value">{{ overall.percentile(0.5) | duration }}</div>
+        <div class="measure-note">The median across all finished work.</div>
+      </div>
+      <div class="measure">
+        <div class="measure-label">85% finish within</div>
+        <div class="measure-value">{{ overall.percentile(0.85) | duration }}</div>
+        <div class="measure-note">The number to plan against, not the average.</div>
+      </div>
+      <div class="measure">
+        <div class="measure-label">Slowest</div>
+        <div class="measure-value">{{ overall.percentile(1.0) | duration }}</div>
+        <div class="measure-note">The tail is shown rather than hidden.</div>
+      </div>
+    </div>
+    {% endif %}
+  </section>
+
+  <div class="detail">
+    <div style="display:flex;flex-direction:column;gap:14px">
+
+      <section class="panel glass anim-rise" style="animation-delay:80ms">
+        <h2>By kind of work</h2>
+        <p class="fld-note" style="margin-top:0">
+          Read the 85% column, not the median — planning against the number that
+          half of all work already exceeds is how dates get missed.
+          {% if insufficient %}
+          Rows marked <em>not yet</em> have fewer than {{ min_sample }} finished
+          items, so no range is offered for them.
+          {% endif %}
+        </p>
+        <table class="hist">
+          <thead>
+            <tr>
+              <th>Kind</th><th class="t-num">Finished</th>
+              <th class="t-num">Half within</th><th class="t-num">85% within</th>
+              <th class="t-num">Slowest</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for name, cohort in by_type %}
+          <tr>
+            <td>{{ name }}</td>
+            <td class="t-num">{{ cohort.size }}</td>
+            {% if cohort.is_sufficient %}
+            <td class="t-num">{{ cohort.percentile(0.5) | duration }}</td>
+            <td class="t-num"><strong>{{ cohort.percentile(0.85) | duration }}</strong></td>
+            <td class="t-num">{{ cohort.percentile(1.0) | duration }}</td>
+            {% else %}
+            <td class="t-num" colspan="3" style="color:var(--text-3)">
+              not yet — {{ min_sample - cohort.size }} more finished item(s) needed
+            </td>
+            {% endif %}
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="empty">Nothing finished yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      <section class="panel glass anim-rise" style="animation-delay:120ms">
+        <h2>Open work, against its own history</h2>
+        <p class="fld-note" style="margin-top:0">
+          Where a range is known, this is how far through it each open item is.
+          An item can be inside its date and still be behaving unlike everything
+          comparable — that is worth knowing before the date arrives, not after.
+        </p>
+        <table class="hist">
+          <thead>
+            <tr><th>Item</th><th>Owner</th><th class="t-num">Spent</th><th>Against history</th></tr>
+          </thead>
+          <tbody>
+          {% for row in open_rows %}
+          <tr>
+            <td><a href="/items/{{ row.item.id }}">{{ row.item.title[:52] }}</a></td>
+            <td>{{ row.owner or '—' }}</td>
+            <td class="t-num">{{ row.projection.spent | duration }}</td>
+            <td title="{{ row.projection.explanation }}">
+              {% if not row.projection.forecast.known %}
+              <span style="color:var(--text-3)">no comparable history yet</span>
+              {% elif row.projection.overrunning %}
+              <span style="color:var(--risk)">past the 85% mark</span>
+              {% else %}
+              <span style="color:var(--ok)">about {{ row.projection.remaining | duration }} left</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="empty">No open work.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </section>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+
+      <section class="panel glass anim-rise" style="animation-delay:100ms">
+        <h2>Throughput</h2>
+        <p class="fld-note" style="margin-top:0">
+          Items finished per week. Cycle time says how long one item takes;
+          throughput says how many get through. A team can improve one while
+          damaging the other, so neither is shown alone.
+        </p>
+        {% set peak = (throughput | map(attribute=1) | max) or 1 %}
+        <div class="bars">
+          {% for label, count in throughput %}
+          <div class="bar-row">
+            <span class="bar-label">{{ label }}</span>
+            <span class="bar-track">
+              <span class="bar-fill" style="width:{{ (count / peak * 100) | round }}%"></span>
+            </span>
+            <span class="bar-num">{{ count }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="panel glass anim-rise" style="animation-delay:140ms">
+        <h2>Why there is no predicted date</h2>
+        <p class="fld-note" style="margin-top:0;line-height:1.55">
+          Two items of the same kind can differ by a week for reasons nothing in
+          this system can see — the client goes quiet, the fix turns out to sit
+          under something else, someone more urgent arrives. A single date hides
+          that spread behind a number that looks certain.
+          <br /><br />
+          So the product answers with the spread itself. "85% of work like this
+          finished within four working days" can be planned against and can be
+          checked afterwards. "Thursday" can only be believed, and then broken.
+          <br /><br />
+          Where fewer than <strong>{{ min_sample }}</strong> comparable items have
+          finished, nothing is offered at all. A range drawn from three items is
+          an anecdote wearing a statistic's clothes, and the first time it is
+          wrong it takes every other figure here down with it.
+        </p>
+      </section>
+    </div>
+  </div>
+</div>
+</body>
+</html>

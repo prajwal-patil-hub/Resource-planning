@@ -10,16 +10,16 @@
 
 ## CURRENT PHASE
 
-**Phase 4 — Implementation.** Features 1–5 built and running. 128 tests.
+**Phase 4 — Implementation.** Features 1–6 built and running. 160 tests.
 
 ## CURRENT OBJECTIVE
 
-Flow statistics and forecasting (BR-018) — the last unmet business objective,
-BO-6. Now unblocked: recorded timestamps are finally trustworthy.
+Reporting by client (BR-019) — the last requirement gap. Everything after it is
+convenience and operations.
 
-**Status:** 128 tests passing against real PostgreSQL 16. ~86% of v1 scope;
-19 of 25 business requirements built, 4 partial, 2 unbuilt. Full audit in
-`docs/14-build-status.md`.
+**Status:** 160 tests passing against real PostgreSQL 16. ~92% of v1 scope;
+22 of 25 business requirements built, 2 partial, 1 unbuilt. **All six business
+objectives BO-1..BO-6 are met.** Full audit in `docs/14-build-status.md`.
 
 ---
 
@@ -237,6 +237,19 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 - D-036: **Scoping rules are enforced at the write, not only in the widget**
   (RULE-017). A filtered dropdown is a convenience; the form beneath it accepts
   any identifier posted to it.
+- D-037: **ADR-005 — forecast from percentiles of past work, and refuse below a
+  minimum sample.** Median and 85th percentile rather than a mean, because cycle
+  times are right-skewed and the mean describes no real case. Nearest-rank, not
+  interpolated. Never converted into a date. Nothing offered at all below 8
+  comparable finished items. **ACCEPTED 2026-08-16.**
+- D-038: **The cohort ladder is walked, and which rung was used is stated.**
+  Type-and-priority, then type, then all work; stop at the first with enough
+  data. An answer from "Bug at P1" and one from "all finished work" deserve
+  different trust, and a reader cannot tell them apart unless told.
+- D-039: **A stalled item is not also reported as overrunning.** Both are true
+  and the second adds nothing — "nothing has happened for four weeks" already
+  explains why it outran its history, and it is the more actionable of the two.
+  Two rows saying one thing is the noise D-031 forbids.
 - D-013: **Optimistic locking** for concurrent edits to one work item.
   Notably *not* needed for concurrent assignment — nothing is reserved under
   ADR-001, so two assignments simply show as higher load, which is accurate.
@@ -324,11 +337,9 @@ Ordered build plan in `docs/14-build-status.md`:
 4. ~~Attention view~~ — **DONE 2026-08-16** (/attention)
 5. ~~Recording context — backdating + assign-time load~~ — **DONE 2026-08-16**
    (BR-004, BR-016, RULE-016, RULE-017)
-6. **Flow statistics and forecasting** ← next
-   (BR-017 risk is partly done — "due soon and not started" is live;
-   BR-018 probability ranges still need history. Closes BO-6, the last
-   unmet business objective)
-7. Reporting by client and type
+6. ~~Flow statistics and forecasting~~ — **DONE 2026-08-16**
+   (BR-017, BR-018, RULE-009/010/013; ADR-005. Closes BO-6)
+7. **Reporting by client** ← next (BR-019)
 8. Reference data management
 9. Search
 10. Deployment, backups, restore

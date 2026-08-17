@@ -1667,3 +1667,52 @@ dialog.sheet[open] { animation: rise-in 240ms var(--ease) both; }
 .composer .assignee-select { max-width: 178px; }
 .composer input[type="text"] { flex: 1 1 240px; }
 .composer .when-picker summary { padding: 7px 11px; }
+
+/* ==========================================================================
+   Flow statistics — Feature 6 (BR-018)
+   ========================================================================== */
+
+/* Throughput bars. Deliberately plain: this is a magnitude comparison across
+   eight rows, and a chart library would add a dependency and a canvas to do
+   what proportional widths already do. */
+.bars { display: flex; flex-direction: column; gap: 7px; }
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 56px 1fr 28px;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+}
+
+.bar-label { color: var(--text-3); font-variant-numeric: tabular-nums; }
+
+.bar-track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--glass-fill-sunk);
+  overflow: hidden;
+}
+
+.bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ok);
+  /* Animates in on load with the rest of the page, so the bars read as one
+     movement rather than appearing fully formed. */
+  animation: bar-grow 620ms var(--ease) both;
+  transform-origin: left center;
+}
+
+@keyframes bar-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+.bar-num {
+  text-align: right;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar-fill { animation: none; }
+}
