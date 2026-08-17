@@ -44,6 +44,7 @@
   {% if can(me, Permission.MANAGE_PEOPLE) %}
   <a class="btn btn-sm" href="/people">People</a>
   {% endif %}
+  <a class="btn btn-sm {% if view == 'reference' %}btn-primary{% endif %}" href="/reference">Labels</a>
   <form method="post" action="/logout" style="display:inline">
     <button class="btn btn-sm" type="submit">Sign out</button>
   </form>

@@ -10,17 +10,16 @@
 
 ## CURRENT PHASE
 
-**Phase 4 — Implementation.** Features 1–7 built and running. 180 tests.
+**Phase 4 — Implementation.** Features 1–8 built and running. 218 tests.
 
 ## CURRENT OBJECTIVE
 
-Reference data management (BR-023, BR-024) — adding a client or work type still
-needs SQL, and the new client report is only as good as whether items carry a
-client at all.
+Search, then deployment. **The product itself is complete** — what is left is
+finding things at scale and running it somewhere real.
 
-**Status:** 180 tests passing against real PostgreSQL 16. ~96% of v1 scope;
-**every business requirement is built**, 2 partially. All six business
-objectives BO-1..BO-6 are met. Full audit in `docs/14-build-status.md`.
+**Status:** 218 tests passing against real PostgreSQL 16. **All 25 business
+requirements built, none partial.** All six business objectives BO-1..BO-6 met.
+Full audit in `docs/14-build-status.md`.
 
 ---
 
@@ -261,6 +260,20 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
   few items there are. "This client is slow" is a claim about their habits and
   needs the sample RULE-013 requires. So the figure always shows and the
   warning colour waits.
+- D-042: **Reference data is retired, never deleted** (RULE-020). BR-005 applied
+  to the labels: a client with thirty finished items cannot be removed without
+  those items losing their history. Enforced by a database trigger so no future
+  code path can reintroduce deletion. Names are unique case-insensitively —
+  "Acme" and "acme" as two rows is the worst failure available to the reports,
+  because each carries half the history and nothing can detect it.
+- D-043: **Renaming is the tool for a name change, not replacement.** Records
+  point at the row, so a rename makes every past report say the new name, which
+  is right — it is the same client. The screen says so, because the instinct is
+  usually to create a new one and split the history in two.
+- D-044: **Naming things and changing who can do what are separate powers.**
+  `MANAGE_LABELS` (team lead and above) covers clients and work types;
+  `MANAGE_PEOPLE` (admin) covers roles and teams. A lead should not need an
+  administrator to add a client.
 - D-013: **Optimistic locking** for concurrent edits to one work item.
   Notably *not* needed for concurrent assignment — nothing is reserved under
   ADR-001, so two assignments simply show as higher load, which is accurate.
@@ -351,8 +364,9 @@ Ordered build plan in `docs/14-build-status.md`:
 6. ~~Flow statistics and forecasting~~ — **DONE 2026-08-16**
    (BR-017, BR-018, RULE-009/010/013; ADR-005. Closes BO-6)
 7. ~~Reporting by client~~ — **DONE 2026-08-16** (BR-019, RULE-018/019)
-8. **Reference data management** ← next (BR-023, BR-024)
-9. Search
+8. ~~Reference data management~~ — **DONE 2026-08-16**
+   (BR-023, BR-024, RULE-020/021, migration 007)
+9. **Search** ← next
 10. Deployment, backups, restore
 
 Items 1–5 are what a pilot needs. 6–7 are what make it worth keeping.

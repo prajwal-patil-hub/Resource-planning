@@ -1,11 +1,11 @@
 # Build Status — what is actually built
 
-**Date:** 2026-08-16 (revised after Feature 7)
+**Date:** 2026-08-16 (revised after Feature 8)
 **Question answered:** "Is everything built?"
-**Short answer:** Every business requirement in `03-brd.md` is now built —
-roughly **96%** of v1 scope, up from 45% at the first audit. **All six business
-objectives BO-1..BO-6 are met.** What remains is reference-data screens, search
-and deployment: convenience and operations, not product.
+**Short answer:** **Every business requirement in `03-brd.md` is now fully
+built** — 25 of 25, up from 11 at the first audit. All six business objectives
+BO-1..BO-6 are met. Nothing about the product is missing; what remains is
+search and deployment.
 
 This document exists because "is it done?" deserves a measured answer rather
 than an impression. Every business requirement from the BRD is listed with its
@@ -25,8 +25,8 @@ real state, verified against the running code — not from memory.
 
 | | Count | Was (first audit) |
 |---|---|---|
-| Built | 23 | 11 |
-| Partial | 2 | 6 |
+| Built | **25** | 11 |
+| Partial | 0 | 6 |
 | Not built | 0 | 8 |
 | **Total v1 business requirements** | **25** | 25 |
 
@@ -37,7 +37,7 @@ real state, verified against the running code — not from memory.
 `ExplanationService` (distributed — every figure carries its own derivation
 rather than a central service being asked for one).
 
-**Test count:** 180, all passing against real PostgreSQL 16.
+**Test count:** 218, all passing against real PostgreSQL 16.
 
 ---
 
@@ -89,8 +89,8 @@ rather than a central service being asked for one).
 |---|---|---|---|
 | BR-021 | Usable immediately, no configuration | **Built** | |
 | BR-022 | Useful output without estimates or timesheets | **Built** | |
-| BR-023 | Work types extensible without a code change | **Partial** | Reference table exists; adding one needs SQL |
-| BR-024 | Roles addable and placeable in the hierarchy | **Partial** | Same — table exists, no UI |
+| BR-023 | Work types extensible without a code change | **Built** | `/reference` — "Labels". Add, rename, reorder and retire clients and work types. Names unique case-insensitively; retired rows stay listed with their history intact (RULE-020) |
+| BR-024 | Roles addable and placeable in the hierarchy | **Built** | Same screen. A new role picks one of the four permission levels — ADR-002's seam used as designed — with what each level grants spelled out rather than left to guess. `can_verify` stays separate so QA verifies without a lead's other powers. A role people still hold cannot be retired (RULE-021) |
 | BR-025 | Access governed by role and team | **Built** | bcrypt passwords, server-side revocable sessions (token hash stored, never the token), lockout after repeated failures, first-run bootstrap, permission matrix in `access.py`. Cross-team assignment is now refused at the point of assignment (RULE-017), and the load strip no longer leaks other teams |
 
 ---
@@ -103,7 +103,6 @@ enforcement, forecasting, client reporting. What is left:
 
 | Gap | Why it blocks |
 |---|---|
-| **No client or work-type management** | Adding either still requires SQL — and `/clients` makes this sharper, since the report is only as good as whether items carry a client at all |
 | **No self-service password reset** | A lead must reset for you |
 | **No text search** | At a few hundred items, finding one becomes guesswork |
 | **No deployment configuration** | No HTTPS, no backups, no process supervision, no restore procedure |
@@ -137,8 +136,8 @@ Sequenced by dependency and by risk, not by ease.
 | **5** | **Recording context: backdating + assign-time load** | BR-004, BR-016, RULE-016, RULE-017 | **Done** | Both are one-screen changes, and the first protects the integrity of every number in features 6–7. Promoted above forecasting for that reason |
 | **6** | **Flow statistics and forecasting** | BR-017, BR-018, RULE-009, RULE-010, RULE-013 | **Done** | Needed ~3–4 weeks of history to mean anything, so built early to let it fill. **Closed BO-6, the last unmet business objective** — ADR-005 |
 | **7** | **Reporting by client** | BR-019, RULE-018, RULE-019 | **Done** | The manager-facing view, and the last requirement gap |
-| **8** | **Reference data management** | BR-023, BR-024 | ← **next** | Small, and now load-bearing: the client report is only as good as whether items carry a client, and adding one still needs SQL |
-| **9** | **Search** | — | | Small |
+| **8** | **Reference data management** | BR-023, BR-024, RULE-020, RULE-021 | **Done** | Small, and load-bearing: the client report is only as good as whether items carry a client |
+| **9** | **Search** | — | ← **next** | Small. At a few hundred items, finding one becomes guesswork |
 | **10** | **Deployment, backups, restore** | — | | Last, but before any real data exists |
 
 **Why 5 was promoted above forecasting.** The original plan put flow statistics
@@ -158,5 +157,6 @@ avoid. Fix the input before building the thing that consumes it.
 | 1.0 | 2026-08-16 | First audit, against BRD v1.1 and the running code |
 | 1.1 | 2026-08-16 | Re-audited after Features 1–4. 11→17 built, 8→2 unbuilt. Plan re-ordered: recording context promoted above forecasting, with the reason recorded |
 | 1.2 | 2026-08-16 | Feature 5 built. BR-004 and BR-016 closed; RULE-016 and RULE-017 added. 17→19 built. Two defects found while verifying and fixed: the load strip leaked every team's load to a single-team user, and cancelled absences still counted as away |
+| 1.5 | 2026-08-16 | Feature 8 built. BR-023 and BR-024 closed — **all 25 business requirements are now built, none partial**. RULE-020 and RULE-021 added, with migration 007 for case-insensitive name uniqueness and a delete-blocking trigger. Two schema gaps found and closed: work type and role names had no uniqueness constraint at all, and client/team names were unique only by case |
 | 1.4 | 2026-08-16 | Feature 7 built. BR-019 closed — **every business requirement is now built**. RULE-018 and RULE-019 added. One inconsistency found while verifying and fixed: open-work counts were not team-scoped while the finished columns beside them were, putting two populations in one row |
 | 1.3 | 2026-08-16 | Feature 6 built. BR-017, BR-018 and BR-020 closed, BR-019 moved to partial; ADR-005 records the forecasting method. 19→22 built, **BO-1..BO-6 all met**. One self-contradiction found while verifying and fixed: the flow page printed a median drawn from two items in its largest type, which is the exact failure the page argues against |

@@ -376,6 +376,8 @@ decided it is marked OPEN rather than guessed.
 | **RULE-017** | A person may only be assigned work from a team they are permitted to assign into. The check is enforced at the point of assignment, not only in the list of names offered. |
 | **RULE-018** | No report presents elapsed item time as effort, cost, capacity or person-hours. The product holds no effort data and must never imply that it does. |
 | **RULE-019** | A measurement may be shown at any sample size; an inference drawn from it may not. Emphasis, ranking and percentiles wait for the minimum sample (RULE-013); a directly measured quantity does not. |
+| **RULE-020** | Reference data — clients, work types, roles, teams — is retired, never deleted, and names are unique regardless of case. |
+| **RULE-021** | A role or team still held by active people cannot be retired. |
 
 > **On RULE-013.** Forecasting from three completed items produces a confident
 > number with no basis. Refusing to answer until there is enough history is a
@@ -405,6 +407,21 @@ decided it is marked OPEN rather than guessed.
 > the client" is true however few items there are, and withholding it would be
 > false caution. "This client is slow" is an inference about their habits, and
 > that needs a sample. So the figure is always shown and the emphasis is not.
+
+> **On RULE-020.** Two rows for one client is the worst failure available to the
+> reports: each carries half the history, every total is wrong, and nothing in
+> the product can detect it — from the reports' point of view these genuinely
+> are two different clients. Case-insensitive uniqueness closes the common
+> version ("Acme" and "acme"). Retiring rather than deleting is the same
+> principle as BR-005 applied to the labels: a client with thirty finished items
+> cannot be removed without those thirty items losing their history. Renaming is
+> therefore the correct tool for a name change, and the screen says so, because
+> the instinct is usually to create a new one.
+
+> **On RULE-021.** `can()` reads permissions through the person's role, so
+> everyone holding a retired role would keep whatever it grants while the role
+> stopped appearing anywhere — a permission in force and invisible. The same
+> applies to teams, which scope visibility under RULE-011.
 
 ---
 

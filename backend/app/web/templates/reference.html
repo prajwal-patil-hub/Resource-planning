@@ -1,0 +1,253 @@
+{% import "_shell.html" as shell %}
+{{ shell.head("Clients, types and roles") }}
+
+<div class="shell" style="padding-bottom:40px">
+  {{ shell.topbar('reference', me) }}
+  {{ shell.banner(request) }}
+  {% if notice %}<div class="notice">{{ notice }}</div>{% endif %}
+
+  <section class="panel glass anim-rise" style="animation-delay:40ms">
+    <h2>The labels work is filed under</h2>
+    <p class="fld-note" style="margin-top:0;max-width:78ch">
+      Every report groups by one of these, so what lives here decides what those
+      reports can say. Two things worth knowing before you change anything:
+    </p>
+    <p class="fld-note" style="max-width:78ch">
+      <strong>Nothing is ever deleted.</strong> A client with thirty finished
+      items cannot be removed without those thirty items losing their history,
+      so retiring one only stops it being <em>offered</em> for new work. Every
+      past record stays exactly as it was.
+      <br /><br />
+      <strong>Rename rather than replace.</strong> If a client changes its name,
+      rename it — the records point at the row, not the text, so every past
+      report simply starts saying the new name, which is right because it is the
+      same client. Adding a second client and switching to it splits one
+      relationship's history into two halves, and then neither total is true.
+    </p>
+  </section>
+
+  <div class="detail">
+    <div style="display:flex;flex-direction:column;gap:14px">
+
+      {# ---- Clients ---------------------------------------------------- #}
+      <section class="panel glass anim-rise" style="animation-delay:80ms">
+        <h2>Clients <span class="count">{{ clients | length }}</span></h2>
+        {% if can(me, Permission.MANAGE_LABELS) %}
+        <form class="fld-row" method="post" action="/reference/clients">
+          <label class="fld"><span>New client</span><input type="text" name="name" required placeholder="Name as you would say it" /></label>
+          <button class="btn btn-sm btn-primary" type="submit" style="align-self:flex-end">Add</button>
+        </form>
+        {% endif %}
+        <table class="hist" style="margin-top:10px">
+          <thead><tr><th>Client</th><th class="t-num">Items</th><th class="t-num">Open</th><th></th></tr></thead>
+          <tbody>
+          {% for c in clients %}
+          <tr {% if not c.active %}class="retired"{% endif %}>
+            <td>
+              {% if can(me, Permission.MANAGE_LABELS) %}
+              <form class="inline-edit" method="post" action="/reference/clients/{{ c.id }}/rename">
+                <input type="text" name="name" value="{{ c.name }}" aria-label="Client name" />
+                <button class="btn btn-sm" type="submit">Rename</button>
+              </form>
+              {% else %}{{ c.name }}{% endif %}
+              {% if not c.active %}<span class="chip">retired</span>{% endif %}
+            </td>
+            <td class="t-num">{{ usage.clients.get(c.id, 0) }}</td>
+            <td class="t-num">{{ usage.open_clients.get(c.id, 0) or '—' }}</td>
+            <td>
+              {% if can(me, Permission.MANAGE_LABELS) %}
+              <form method="post" action="/reference/clients/{{ c.id }}/active">
+                <input type="hidden" name="active" value="{{ 'false' if c.active else 'true' }}" />
+                <button class="btn btn-sm" type="submit"
+                        title="{% if c.active %}Stops it being offered for new work. The {{ usage.clients.get(c.id, 0) }} existing item(s) are untouched.{% else %}Offer this client again when recording work.{% endif %}">
+                  {{ 'Retire' if c.active else 'Restore' }}
+                </button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="empty">No clients yet — work can still be recorded without one.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      {# ---- Work types -------------------------------------------------- #}
+      <section class="panel glass anim-rise" style="animation-delay:120ms">
+        <h2>Kinds of work <span class="count">{{ types | length }}</span></h2>
+        <p class="fld-note" style="margin-top:0">
+          These group the forecasting page, so a type that splits ten-minute
+          fixes from three-week investigations makes those forecasts sharper.
+          Order controls where each one sits in the composer's dropdown.
+        </p>
+        {% if can(me, Permission.MANAGE_LABELS) %}
+        <form class="fld-row" method="post" action="/reference/types">
+          <label class="fld"><span>New kind of work</span><input type="text" name="name" required /></label>
+          <label class="fld" style="flex:none"><span>Order</span><input type="number" name="sort_order" value="100" min="0" max="999" style="width:82px" /></label>
+          <button class="btn btn-sm btn-primary" type="submit" style="align-self:flex-end">Add</button>
+        </form>
+        {% endif %}
+        <table class="hist" style="margin-top:10px">
+          <thead><tr><th>Kind</th><th class="t-num">Order</th><th class="t-num">Items</th><th></th></tr></thead>
+          <tbody>
+          {% for t in types %}
+          <tr {% if not t.active %}class="retired"{% endif %}>
+            <td>
+              {% if can(me, Permission.MANAGE_LABELS) %}
+              <form class="inline-edit" method="post" action="/reference/types/{{ t.id }}/rename">
+                <input type="text" name="name" value="{{ t.name }}" aria-label="Type name" />
+                <button class="btn btn-sm" type="submit">Rename</button>
+              </form>
+              {% else %}{{ t.name }}{% endif %}
+              {% if not t.active %}<span class="chip">retired</span>{% endif %}
+            </td>
+            <td class="t-num">
+              {% if can(me, Permission.MANAGE_LABELS) %}
+              <form class="inline-edit" method="post" action="/reference/types/{{ t.id }}/order">
+                <input type="number" name="sort_order" value="{{ t.sort_order }}" min="0" max="999"
+                       style="width:70px" aria-label="Sort order" />
+                <button class="btn btn-sm" type="submit">Set</button>
+              </form>
+              {% else %}{{ t.sort_order }}{% endif %}
+            </td>
+            <td class="t-num">{{ usage.work_types.get(t.id, 0) }}</td>
+            <td>
+              {% if can(me, Permission.MANAGE_LABELS) %}
+              <form method="post" action="/reference/types/{{ t.id }}/active">
+                <input type="hidden" name="active" value="{{ 'false' if t.active else 'true' }}" />
+                <button class="btn btn-sm" type="submit">{{ 'Retire' if t.active else 'Restore' }}</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </section>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+
+      {# ---- Roles (BR-024) ---------------------------------------------- #}
+      <section class="panel glass anim-rise" style="animation-delay:100ms">
+        <h2>Roles <span class="count">{{ roles | length }}</span></h2>
+        <p class="fld-note" style="margin-top:0">
+          A role is a name plus a place in the hierarchy. Per <strong>ADR-002</strong>
+          roles are data and can be added here at any time, while what each level
+          may actually do lives in code — so a new role picks an existing level
+          rather than an arbitrary set of powers. What each level grants is
+          spelled out below rather than left to be guessed at.
+        </p>
+
+        {% if can(me, Permission.MANAGE_PEOPLE) %}
+        <form class="fld-row" method="post" action="/reference/roles">
+          <label class="fld"><span>New role</span><input type="text" name="name" required placeholder="e.g. Solution Architect" /></label>
+          <label class="fld">
+            <span>Sits at the level of</span>
+            <select name="permission_level">
+              {% for level in levels %}<option value="{{ level }}" {% if level == 'DEVELOPER' %}selected{% endif %}>{{ level | title | replace('_', ' ') }}</option>{% endfor %}
+            </select>
+          </label>
+          <label class="fld" style="flex:none">
+            <span>Can verify</span>
+            <input type="checkbox" name="can_verify" value="1" style="width:18px;height:18px" />
+          </label>
+          <button class="btn btn-sm btn-primary" type="submit" style="align-self:flex-end">Add</button>
+        </form>
+        <p class="fld-note">
+          <strong>Can verify</strong> is separate from the level on purpose: QA
+          verifies work without holding a lead's other powers.
+        </p>
+        {% endif %}
+
+        <table class="hist" style="margin-top:10px">
+          <thead><tr><th>Role</th><th>Level</th><th class="t-num">People</th><th></th></tr></thead>
+          <tbody>
+          {% for r in roles %}
+          <tr {% if not r.active %}class="retired"{% endif %}>
+            <td>
+              {{ r.name }}
+              {% if r.can_verify %}<span class="chip">verifies</span>{% endif %}
+              {% if not r.active %}<span class="chip">retired</span>{% endif %}
+            </td>
+            <td title="{{ level_notes[r.permission_level] }}">
+              {{ r.permission_level | title | replace('_', ' ') }}
+            </td>
+            <td class="t-num">{{ usage.roles.get(r.id, 0) or '—' }}</td>
+            <td>
+              {% if can(me, Permission.MANAGE_PEOPLE) %}
+              <form method="post" action="/reference/roles/{{ r.id }}/active">
+                <input type="hidden" name="active" value="{{ 'false' if r.active else 'true' }}" />
+                <button class="btn btn-sm" type="submit">{{ 'Retire' if r.active else 'Restore' }}</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+
+        <details class="edit-block" style="margin-top:10px">
+          <summary>What each level grants</summary>
+          <table class="hist">
+            <tbody>
+            {% for level, note in level_notes.items() %}
+            <tr><td style="white-space:nowrap"><strong>{{ level | title | replace('_', ' ') }}</strong></td><td>{{ note }}</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </details>
+      </section>
+
+      {# ---- Teams -------------------------------------------------------- #}
+      <section class="panel glass anim-rise" style="animation-delay:140ms">
+        <h2>Teams <span class="count">{{ teams | length }}</span></h2>
+        <p class="fld-note" style="margin-top:0">
+          Teams decide what people can see (RULE-011) and who they can assign
+          work to, so adding one has consequences beyond the board filter.
+        </p>
+        {% if can(me, Permission.MANAGE_PEOPLE) %}
+        <form class="fld-row" method="post" action="/reference/teams">
+          <label class="fld"><span>New team</span><input type="text" name="name" required /></label>
+          <button class="btn btn-sm btn-primary" type="submit" style="align-self:flex-end">Add</button>
+        </form>
+        {% endif %}
+        <table class="hist" style="margin-top:10px">
+          <thead><tr><th>Team</th><th class="t-num">People</th><th></th></tr></thead>
+          <tbody>
+          {% for t in teams %}
+          <tr {% if not t.active %}class="retired"{% endif %}>
+            <td>
+              {% if can(me, Permission.MANAGE_PEOPLE) %}
+              <form class="inline-edit" method="post" action="/reference/teams/{{ t.id }}/rename">
+                <input type="text" name="name" value="{{ t.name }}" aria-label="Team name" />
+                <button class="btn btn-sm" type="submit">Rename</button>
+              </form>
+              {% else %}{{ t.name }}{% endif %}
+              {% if not t.active %}<span class="chip">retired</span>{% endif %}
+            </td>
+            <td class="t-num">{{ usage.teams.get(t.id, 0) or '—' }}</td>
+            <td>
+              {% if can(me, Permission.MANAGE_PEOPLE) %}
+              <form method="post" action="/reference/teams/{{ t.id }}/active">
+                <input type="hidden" name="active" value="{{ 'false' if t.active else 'true' }}" />
+                <button class="btn btn-sm" type="submit">{{ 'Retire' if t.active else 'Restore' }}</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        <p class="fld-note">
+          A role or team still held by active people cannot be retired — they
+          would keep its permissions or its visibility scope while it stopped
+          appearing anywhere. Move the people first.
+        </p>
+      </section>
+    </div>
+  </div>
+</div>
+</body>
+</html>

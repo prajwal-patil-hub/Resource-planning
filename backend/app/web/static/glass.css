@@ -1734,3 +1734,54 @@ dialog.sheet[open] { animation: rise-in 240ms var(--ease) both; }
 .share-num { font-variant-numeric: tabular-nums; min-width: 30px; text-align: right; }
 
 .mix { font-size: 0.78rem; color: var(--text-2); }
+
+/* ==========================================================================
+   Reference data — Feature 8 (BR-023, BR-024)
+   ========================================================================== */
+
+/* Retired rows stay listed rather than vanishing. The whole point of retiring
+   rather than deleting is that the history is still there, and a row that
+   disappeared would look deleted — which is the misunderstanding this design
+   exists to prevent. */
+.retired { opacity: 0.55; }
+.retired input[type="text"] { font-style: italic; }
+
+/* Rename in place. A separate edit screen for a single text field is three
+   clicks to change one word. */
+/* inline-flex, not flex: a block-level box here pushes the "retired" chip that
+   follows it onto its own line and makes every retired row taller than the
+   others. */
+.inline-edit { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; }
+.inline-edit input[type="text"] { min-width: 150px; flex: 1 1 auto; padding: 6px 9px; }
+.inline-edit input[type="number"] { padding: 6px 8px; }
+
+/* The rename button stays quiet until the row is being worked on, so a table of
+   twenty clients does not read as twenty calls to action. */
+.inline-edit .btn { opacity: 0; transition: opacity var(--dur) var(--ease); }
+tr:hover .inline-edit .btn,
+.inline-edit:focus-within .btn { opacity: 1; }
+
+@media (hover: none) {
+  /* No hover to reveal with, so never hide it. */
+  .inline-edit .btn { opacity: 1; }
+}
+
+.notice {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--glass-fill-sunk);
+  border: 1px solid var(--glass-border-soft);
+  color: var(--text-2);
+  font-size: 0.84rem;
+  animation: rise-in 260ms var(--ease) both;
+}
+
+/* Checkboxes inside a field row follow the same accent as the team filter's.
+   A bare native box beside styled inputs reads as an unfinished control. */
+.fld input[type="checkbox"] {
+  accent-color: var(--ok);
+  width: 17px;
+  height: 17px;
+  cursor: pointer;
+}

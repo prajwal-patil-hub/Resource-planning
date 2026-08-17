@@ -37,6 +37,24 @@ from app.flow.attention import build_attention
 from app.flow.calendar import load_calendar
 from app.flow.load import assignment_options, load_for_team
 from app.flow.reporting import build_client_reports, by_type_totals
+from app.reference import (
+    LEVEL_DESCRIPTIONS,
+    PERMISSION_LEVELS,
+    ReferenceError,
+    add_client,
+    add_role,
+    add_team,
+    add_work_type,
+    rename_client,
+    rename_team,
+    rename_work_type,
+    reorder_work_type,
+    set_client_active,
+    set_role_active,
+    set_team_active,
+    set_work_type_active,
+    usage as reference_usage,
+)
 from app.flow.statistics import (
     DEFAULT_WINDOW_DAYS,
     MIN_SAMPLE,
@@ -1481,3 +1499,266 @@ def page_clients(
             "min_sample": MIN_SAMPLE,
         },
     )
+
+
+# --------------------------------------------------------------------------
+# Reference data — the labels work is filed under (BR-023, BR-024)
+# --------------------------------------------------------------------------
+
+
+def _reference_back(message: str = "", error: str = "") -> RedirectResponse:
+    query = ""
+    if error:
+        query = f"?error={quote(error)}"
+    elif message:
+        query = f"?notice={quote(message)}"
+    return RedirectResponse(f"/reference{query}", status_code=303)
+
+
+@app.get("/reference", response_class=HTMLResponse)
+def page_reference(
+    request: Request,
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    """Adding a client or a work type stopped needing SQL here.
+
+    Readable by anyone signed in — knowing what the labels are is not privileged
+    — but every form on it is gated. Naming things needs MANAGE_LABELS; roles
+    and teams change what people may do, so they need MANAGE_PEOPLE.
+    """
+    return templates.TemplateResponse(
+        request,
+        "reference.html",
+        {
+            "me": me,
+            "view": "reference",
+            "notice": request.query_params.get("notice"),
+            # Retired rows stay listed rather than vanishing: the point of
+            # retiring is that the history is still there, and a row that
+            # disappears looks deleted.
+            "clients": list(session.scalars(select(Client).order_by(Client.active.desc(), Client.name))),
+            "types": list(session.scalars(select(WorkItemType).order_by(WorkItemType.active.desc(), WorkItemType.sort_order, WorkItemType.name))),
+            "roles": list(session.scalars(select(Role).order_by(Role.active.desc(), Role.name))),
+            "teams": list(session.scalars(select(Team).order_by(Team.active.desc(), Team.name))),
+            "usage": reference_usage(session),
+            "levels": PERMISSION_LEVELS,
+            "level_notes": LEVEL_DESCRIPTIONS,
+        },
+    )
+
+
+@app.post("/reference/clients")
+def do_add_client(
+    name: str = Form(...),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    require(me, Permission.MANAGE_LABELS)
+    try:
+        client = add_client(session, name=name)
+    except ReferenceError as exc:
+        return _reference_back(error=str(exc))
+    return _reference_back(f"Added “{client.name}”. It is now offered when recording work.")
+
+
+@app.post("/reference/clients/{client_id}/rename")
+def do_rename_client(
+    client_id: int,
+    name: str = Form(...),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    require(me, Permission.MANAGE_LABELS)
+    client = session.get(Client, client_id)
+    if client is None:
+        raise HTTPException(status_code=404, detail="No such client")
+    was = client.name
+    try:
+        rename_client(session, client, name=name)
+    except ReferenceError as exc:
+        return _reference_back(error=str(exc))
+    if was == client.name:
+        return _reference_back()
+    return _reference_back(
+        f"“{was}” is now “{client.name}”. Every past report says the new name — "
+        f"it is the same client, so that is the point."
+    )
+
+
+@app.post("/reference/clients/{client_id}/active")
+def do_set_client_active(
+    client_id: int,
+    active: str = Form(...),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    require(me, Permission.MANAGE_LABELS)
+    client = session.get(Client, client_id)
+    if client is None:
+        raise HTTPException(status_code=404, detail="No such client")
+    on = active == "true"
+    set_client_active(session, client, active=on)
+    if on:
+        return _reference_back(f"“{client.name}” is offered again.")
+    return _reference_back(
+        f"“{client.name}” retired. It is no longer offered for new work; every "
+        f"existing item and every past report is unchanged."
+    )
+
+
+@app.post("/reference/types")
+def do_add_type(
+    name: str = Form(...),
+    sort_order: int = Form(default=100),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    require(me, Permission.MANAGE_LABELS)
+    try:
+        row = add_work_type(session, name=name, sort_order=sort_order)
+    except ReferenceError as exc:
+        return _reference_back(error=str(exc))
+    return _reference_back(
+        f"Added “{row.name}”. Forecasts for it start once {MIN_SAMPLE} items of "
+        f"this kind have finished (RULE-013)."
+    )
+
+
+@app.post("/reference/types/{type_id}/rename")
+def do_rename_type(
+    type_id: int,
+    name: str = Form(...),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    require(me, Permission.MANAGE_LABELS)
+    row = session.get(WorkItemType, type_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="No such work type")
+    try:
+        rename_work_type(session, row, name=name)
+    except ReferenceError as exc:
+        return _reference_back(error=str(exc))
+    return _reference_back()
+
+
+@app.post("/reference/types/{type_id}/order")
+def do_reorder_type(
+    type_id: int,
+    sort_order: int = Form(...),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    require(me, Permission.MANAGE_LABELS)
+    row = session.get(WorkItemType, type_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="No such work type")
+    reorder_work_type(session, row, sort_order=sort_order)
+    return _reference_back()
+
+
+@app.post("/reference/types/{type_id}/active")
+def do_set_type_active(
+    type_id: int,
+    active: str = Form(...),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    require(me, Permission.MANAGE_LABELS)
+    row = session.get(WorkItemType, type_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="No such work type")
+    set_work_type_active(session, row, active=active == "true")
+    return _reference_back()
+
+
+@app.post("/reference/roles")
+def do_add_role(
+    name: str = Form(...),
+    permission_level: str = Form(...),
+    can_verify: str = Form(default=""),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    """BR-024. ADR-002's seam used exactly as designed."""
+    require(me, Permission.MANAGE_PEOPLE)
+    try:
+        role = add_role(
+            session, name=name, permission_level=permission_level,
+            can_verify=bool(can_verify),
+        )
+    except ReferenceError as exc:
+        return _reference_back(error=str(exc))
+    return _reference_back(
+        f"Added “{role.name}” at the {role.permission_level.replace('_', ' ').title()} "
+        f"level. It can be given to anyone on the People screen."
+    )
+
+
+@app.post("/reference/roles/{role_id}/active")
+def do_set_role_active(
+    role_id: int,
+    active: str = Form(...),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    require(me, Permission.MANAGE_PEOPLE)
+    role = session.get(Role, role_id)
+    if role is None:
+        raise HTTPException(status_code=404, detail="No such role")
+    try:
+        set_role_active(session, role, active=active == "true")
+    except ReferenceError as exc:
+        return _reference_back(error=str(exc))
+    return _reference_back()
+
+
+@app.post("/reference/teams")
+def do_add_team(
+    name: str = Form(...),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    require(me, Permission.MANAGE_PEOPLE)
+    try:
+        team = add_team(session, name=name)
+    except ReferenceError as exc:
+        return _reference_back(error=str(exc))
+    return _reference_back(f"Added “{team.name}”. It now appears in the team filter.")
+
+
+@app.post("/reference/teams/{team_id}/rename")
+def do_rename_team(
+    team_id: int,
+    name: str = Form(...),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    require(me, Permission.MANAGE_PEOPLE)
+    team = session.get(Team, team_id)
+    if team is None:
+        raise HTTPException(status_code=404, detail="No such team")
+    try:
+        rename_team(session, team, name=name)
+    except ReferenceError as exc:
+        return _reference_back(error=str(exc))
+    return _reference_back()
+
+
+@app.post("/reference/teams/{team_id}/active")
+def do_set_team_active(
+    team_id: int,
+    active: str = Form(...),
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    require(me, Permission.MANAGE_PEOPLE)
+    team = session.get(Team, team_id)
+    if team is None:
+        raise HTTPException(status_code=404, detail="No such team")
+    try:
+        set_team_active(session, team, active=active == "true")
+    except ReferenceError as exc:
+        return _reference_back(error=str(exc))
+    return _reference_back()

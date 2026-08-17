@@ -29,6 +29,10 @@ class Permission(StrEnum):
     # People
     APPROVE_ABSENCE = "approve_absence"
     MANAGE_PEOPLE = "manage_people"
+    # Reference data splits in two on purpose. Naming a client is routine and a
+    # lead should not need an administrator for it; adding a role or a team
+    # changes what people are permitted to do, which is administration.
+    MANAGE_LABELS = "manage_labels"
 
 
 #: What each permission level may do. Levels are cumulative in practice but
@@ -54,6 +58,7 @@ MATRIX: dict[str, frozenset[Permission]] = {
         Permission.VERIFY,
         Permission.SEE_OWN_TEAM,
         Permission.APPROVE_ABSENCE,
+        Permission.MANAGE_LABELS,
     }),
     "MANAGER": frozenset({
         Permission.CREATE_ITEM,
@@ -65,6 +70,7 @@ MATRIX: dict[str, frozenset[Permission]] = {
         Permission.SEE_OWN_TEAM,
         Permission.SEE_ALL_TEAMS,
         Permission.APPROVE_ABSENCE,
+        Permission.MANAGE_LABELS,
     }),
     "ADMIN": frozenset(Permission),
 }
