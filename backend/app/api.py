@@ -1794,3 +1794,19 @@ def page_search(
             ),
         },
     )
+
+
+@app.get("/healthz")
+def healthz(session: Session = Depends(get_session)) -> dict:
+    """Liveness and readiness in one, deliberately.
+
+    It touches the database rather than returning a bare 200. A process that is
+    listening but cannot reach Postgres serves nothing but errors, and a health
+    check that passes in that state tells the supervisor to leave it running —
+    which is precisely the outage nobody gets paged for.
+
+    Unauthenticated on purpose: it is checked by the container runtime before
+    anyone can sign in, and it discloses nothing beyond "the database answers".
+    """
+    session.execute(text("SELECT 1"))
+    return {"status": "ok"}

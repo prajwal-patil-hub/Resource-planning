@@ -1,0 +1,23 @@
+# Caddy obtains and renews the certificate automatically. The only thing that
+# has to be right is SITE_ADDRESS in .env — a real hostname pointed at this
+# machine, or `localhost` for a local trial.
+{$SITE_ADDRESS} {
+	encode gzip
+
+	# Security headers. Modest and specific rather than a copied wall of them:
+	# each is here because of something this app actually does.
+	header {
+		# The session cookie is the whole authentication story, so HSTS is what
+		# stops a downgrade attack reading it off the wire.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "same-origin"
+		-Server
+	}
+
+	reverse_proxy app:8000 {
+		health_uri /healthz
+		health_interval 15s
+	}
+}

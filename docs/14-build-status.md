@@ -1,12 +1,11 @@
 # Build Status — what is actually built
 
-**Date:** 2026-08-17 (revised after Feature 9)
+**Date:** 2026-08-18 (revised after Feature 10 — the last planned feature)
 **Question answered:** "Is everything built?"
 **Short answer:** **Every business requirement in `03-brd.md` is now fully
 built** — 25 of 25, up from 11 at the first audit. All six business objectives
-BO-1..BO-6 are met. Nothing about the product is missing; **the only thing left
-before real data is deployment** — HTTPS, supervision, backups and a tested
-restore.
+BO-1..BO-6 are met, and the ordered plan is complete: **the product is
+deployable and the restore has been performed and timed**, not merely scripted.
 
 This document exists because "is it done?" deserves a measured answer rather
 than an impression. Every business requirement from the BRD is listed with its
@@ -105,7 +104,6 @@ enforcement, forecasting, client reporting. What is left:
 | Gap | Why it blocks |
 |---|---|
 | **No self-service password reset** | A lead must reset for you |
-| **No deployment configuration** | No HTTPS, no backups, no process supervision, no restore procedure |
 | **Background image not chosen** | ADR-004 left it as one CSS property; it is still the placeholder |
 
 ---
@@ -138,7 +136,7 @@ Sequenced by dependency and by risk, not by ease.
 | **7** | **Reporting by client** | BR-019, RULE-018, RULE-019 | **Done** | The manager-facing view, and the last requirement gap |
 | **8** | **Reference data management** | BR-023, BR-024, RULE-020, RULE-021 | **Done** | Small, and load-bearing: the client report is only as good as whether items carry a client |
 | **9** | **Search** | — | **Done** | At a few hundred items, finding one became guesswork. A record you cannot find again is barely a record |
-| **10** | **Deployment, backups, restore** | — | ← **next** | Last, and the only thing left. The first day this holds real client commitments is the day losing it starts to cost something |
+| **10** | **Deployment, backups, restore** | — | **Done** | `deploy/` — four containers, HTTPS with automatic renewal, migrations as a gated one-shot, nightly verified dumps. Restore drill run: total schema loss recovered in **6 seconds**, with all 9 triggers and 35 indexes back and INV-2 still refusing deletes |
 
 **Why 5 was promoted above forecasting.** The original plan put flow statistics
 next. That order was wrong on reflection, and the reason is worth stating: ADR-001
@@ -157,6 +155,7 @@ avoid. Fix the input before building the thing that consumes it.
 | 1.0 | 2026-08-16 | First audit, against BRD v1.1 and the running code |
 | 1.1 | 2026-08-16 | Re-audited after Features 1–4. 11→17 built, 8→2 unbuilt. Plan re-ordered: recording context promoted above forecasting, with the reason recorded |
 | 1.2 | 2026-08-16 | Feature 5 built. BR-004 and BR-016 closed; RULE-016 and RULE-017 added. 17→19 built. Two defects found while verifying and fixed: the load strip leaked every team's load to a single-team user, and cancelled absences still counted as away |
+| 1.7 | 2026-08-18 | Feature 10 built — the ordered plan is complete. Deploying the stack for real found two defects no test could: `bcrypt` was imported by `app/auth.py` and never declared in `requirements.txt`, so any fresh install crash-looped; and `MIN_SAMPLE_FOR_FORECAST` was a config knob wired to nothing that also contradicted the value in force |
 | 1.6 | 2026-08-17 | Feature 9 built. Search across title, description, client, kind, owner and item number, scoped by team. Three UI defects found while verifying and fixed: the topbar wrapped to two rows on every page once the search box was added, the brand subtitle claimed "all open work" on five pages where it was untrue, and the new account menu painted behind the page content |
 | 1.5 | 2026-08-16 | Feature 8 built. BR-023 and BR-024 closed — **all 25 business requirements are now built, none partial**. RULE-020 and RULE-021 added, with migration 007 for case-insensitive name uniqueness and a delete-blocking trigger. Two schema gaps found and closed: work type and role names had no uniqueness constraint at all, and client/team names were unique only by case |
 | 1.4 | 2026-08-16 | Feature 7 built. BR-019 closed — **every business requirement is now built**. RULE-018 and RULE-019 added. One inconsistency found while verifying and fixed: open-work counts were not team-scoped while the finished columns beside them were, putting two populations in one row |

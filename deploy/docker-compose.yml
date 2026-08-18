@@ -1,0 +1,118 @@
+# Production stack: database, application, reverse proxy with HTTPS, backups.
+#
+# Four services, no orchestrator. For fifteen people on one machine, Kubernetes
+# would be more moving parts than the thing it runs (working agreement 10,
+# K-004) — this is `docker compose up -d` and a runbook.
+#
+# Start here:  cp .env.example .env  &&  edit it  &&  docker compose up -d
+# Everything else is in DEPLOY.md.
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      # Deterministic collation, so index ordering cannot change under a base
+      # image upgrade and quietly corrupt unique indexes.
+      LANG: C.UTF-8
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # Deliberately NOT published to the host. The app reaches it over the
+    # compose network; nothing outside the machine ever should.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # Migrations run as their own one-shot service rather than on app start.
+  # Two app containers starting together would otherwise race to migrate the
+  # same database, and a failed migration should stop the deploy loudly rather
+  # than crash-loop behind a restart policy.
+  migrate:
+    build:
+      context: ../backend
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    command: ["alembic", "upgrade", "head"]
+
+  app:
+    build:
+      context: ../backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      # The session cookie travels in clear text without this. Caddy terminates
+      # TLS in front, so it is always correct here — and wrong to omit.
+      COOKIES_SECURE: "1"
+      STALE_AFTER_DAYS: ${STALE_AFTER_DAYS:-3}
+    healthcheck:
+      # Hits /healthz, which touches the database. A container that is listening
+      # but cannot reach Postgres serves nothing but errors, and a check that
+      # passes in that state tells the supervisor to leave it running.
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/healthz', timeout=4).status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # HTTPS, certificates and renewal. Caddy obtains and renews a Let's Encrypt
+  # certificate on its own; the alternative is nginx plus certbot plus a cron
+  # job plus a reload hook, which is four things to forget instead of none.
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data      # certificates — losing this means re-issuing
+      - caddy_config:/config
+
+  # Nightly pg_dump with retention. A sidecar rather than host cron: it moves
+  # with the stack, needs no root on the host, and cannot be lost when someone
+  # rebuilds the machine and forgets a crontab nobody documented.
+  backup:
+    # The postgres image, not the app image: `pg_dump` must be at least the
+    # version of the server it dumps, and pinning both to the same image makes
+    # that true by construction rather than by luck. It also means a database
+    # upgrade cannot silently leave the backup tool behind.
+    image: postgres:16
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
+    volumes:
+      - ./backup.sh:/usr/local/bin/backup.sh:ro
+      - backups:/backups
+    entrypoint: ["/bin/sh", "/usr/local/bin/backup.sh", "--loop"]
+
+volumes:
+  pgdata:
+  backups:
+  caddy_data:
+  caddy_config:

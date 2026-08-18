@@ -3,24 +3,26 @@
 > Single source of truth for "where are we and why". Read this first at the
 > start of every session. Keep it short — detail belongs in `/docs`.
 
-**Last updated:** 2026-08-16
+**Last updated:** 2026-08-18
 **Working name:** Resource Planning (developer workload & capacity platform)
 
 ---
 
 ## CURRENT PHASE
 
-**Phase 4 — Implementation.** Features 1–9 built and running. 246 tests.
+**Phase 4 — Implementation. COMPLETE.** Features 1–10 built, running and
+deployable. 246 tests.
 
 ## CURRENT OBJECTIVE
 
-Deployment — HTTPS, process supervision, backups and a **tested** restore. It is
-the only thing left, and the first day this holds real client commitments is the
-day losing it starts to cost something.
+**The build plan is finished.** What remains is not engineering: pitch it
+(ASM-2, still open by informed choice), choose the background image ADR-004 left
+as one CSS property, and run the restore drill again once real data exists.
 
 **Status:** 246 tests passing against real PostgreSQL 16. **All 25 business
 requirements built, none partial.** All six business objectives BO-1..BO-6 met.
-Full audit in `docs/14-build-status.md`.
+Deployable stack in `deploy/`, restore performed and timed. Full audit in
+`docs/14-build-status.md`.
 
 ---
 
@@ -288,6 +290,20 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
 - D-047: **Every result says why it matched.** BR-020 applied to a list: a hit
   whose title does not contain the query looks like a bug until you can see it
   matched on the client.
+- D-048: **A backup that has not been restored is a file, not a backup.** The
+  drill was run rather than documented: total schema loss, restored in 6
+  seconds, verified down to the triggers and indexes rather than just the row
+  counts. A restore returning rows but not the rules protecting them leaves a
+  database that looks fine and quietly accepts what it should refuse.
+- D-049: **Migrations run as a gated one-shot service, not on app start.** Two
+  app containers starting together would race to migrate the same database, and
+  a failed migration should stop a deploy loudly instead of crash-looping behind
+  a restart policy. The running version survives a bad migration.
+- D-050: **The backup service uses the `postgres` image, not the app image.**
+  `pg_dump` must be at least the version of the server it dumps, so pinning both
+  to one image makes that true by construction. It also kept `postgresql-client`
+  and `curl` out of the runtime image — the health check uses the Python already
+  present.
 - D-013: **Optimistic locking** for concurrent edits to one work item.
   Notably *not* needed for concurrent assignment — nothing is reserved under
   ADR-001, so two assignments simply show as higher load, which is accurate.
@@ -381,7 +397,7 @@ Ordered build plan in `docs/14-build-status.md`:
 8. ~~Reference data management~~ — **DONE 2026-08-16**
    (BR-023, BR-024, RULE-020/021, migration 007)
 9. ~~Search~~ — **DONE 2026-08-17**
-10. **Deployment, backups, restore** ← next
+10. ~~Deployment, backups, restore~~ — **DONE 2026-08-18**
 
 Items 1–5 are what a pilot needs. 6–7 are what make it worth keeping.
 

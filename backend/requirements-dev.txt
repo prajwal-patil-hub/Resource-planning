@@ -1,0 +1,6 @@
+# Test-only dependencies. Kept out of requirements.txt so they never reach
+# the production image: every package in there is one more thing to keep
+# patched, and a test runner has no business in a container serving users.
+-r requirements.txt
+pytest>=8
+httpx>=0.27
