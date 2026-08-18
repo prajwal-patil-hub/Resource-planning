@@ -1,0 +1,78 @@
+{% import "_shell.html" as shell %}
+{{ shell.head("Search" if not results.query else "Search: " ~ results.query) }}
+
+<div class="shell" style="padding-bottom:40px">
+  {{ shell.topbar('search', me, q=results.query) }}
+  {{ shell.banner(request) }}
+
+  <section class="panel glass anim-rise" style="animation-delay:40ms">
+    {% if results.empty_query %}
+    <h2>Find a piece of work</h2>
+    <p class="fld-note" style="margin-top:0;max-width:74ch">
+      Type anything you remember: a word from the title, the client, the kind of
+      work, who had it, or the item number. Words are matched in any order, so
+      <em>acme invoice</em> finds “Invoice PDF is wrong — Acme”.
+      <br /><br />
+      Finished work is included. “What did we do for them last month” is the
+      most common reason to search, and leaving closed items out would look
+      exactly like finding nothing.
+    </p>
+
+    {% elif results.count == 0 %}
+    <h2>Nothing matched “{{ results.query }}”</h2>
+    <p class="fld-note" style="margin-top:0;max-width:74ch">
+      Every word has to appear somewhere — in the title, description, client,
+      kind of work or owner. Try fewer words, or a shorter fragment of one:
+      searching <em>invoi</em> will match <em>invoice</em> and <em>invoicing</em>
+      alike.
+      {% if scoped %}
+      <br /><br />
+      You are seeing your own teams only, so work owned by another team will not
+      appear here even if it matches.
+      {% endif %}
+    </p>
+
+    {% else %}
+    <h2>
+      {{ results.count }} result{{ '' if results.count == 1 else 's' }}
+      {% if results.cut %}<span class="count">{{ results.cut }} more not shown</span>{% endif %}
+    </h2>
+    <p class="fld-note" style="margin-top:0">
+      Open work first, then by priority. Finished items are dimmed — they are
+      context rather than something to act on.
+      {% if results.cut %}
+      <strong>{{ results.cut }} further match{{ 'es' if results.cut != 1 else '' }}</strong>
+      {{ 'are' if results.cut != 1 else 'is' }} not shown; add a word to narrow it.
+      {% endif %}
+    </p>
+
+    <div class="hits">
+      {% for hit in results.hits %}
+      <a class="hit glass-raised {% if hit.is_closed %}closed{% endif %}" href="/items/{{ hit.item.id }}">
+        <span class="hit-id">#{{ hit.item.id }}</span>
+        <span class="pri pri-{{ hit.item.priority }}">P{{ hit.item.priority }}</span>
+        <span class="hit-title">{{ hit.item.title }}</span>
+        <span class="hit-meta">
+          {% if hit.client_name %}<span class="chip">{{ hit.client_name }}</span>{% endif %}
+          {% if hit.type_name %}<span class="chip">{{ hit.type_name }}</span>{% endif %}
+          {% if hit.owner_name %}
+          <span class="assignee">
+            <span class="avatar" aria-hidden="true">{{ hit.owner_name[:1] | upper }}</span>{{ hit.owner_name }}
+          </span>
+          {% else %}
+          <span style="color:var(--risk)">Nobody owns this</span>
+          {% endif %}
+        </span>
+        <span class="state-pill"><span class="dot {{ hit.item.state | lower }}"></span>{{ hit.item.state | state_label }}</span>
+        {# BR-020 applied to a list. A result whose title does not obviously
+           contain the query looks like a mistake until you can see that it
+           matched on the client or the owner instead. #}
+        <span class="hit-why">{{ hit.why }}</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+</div>
+</body>
+</html>

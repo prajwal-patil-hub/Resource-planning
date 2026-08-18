@@ -30,37 +30,73 @@
 {% endmacro %}
 
 
-{% macro topbar(view, me=None) %}
+{% macro topbar(view, me=None, q='') %}
 <header class="topbar glass anim-rise">
-  <h1 class="brand">Work Register <span>· all open work</span></h1>
-  <span class="spacer"></span>
-  {% if me %}
-  <span class="whoami" title="{{ me.email }}">
-    <span class="avatar" aria-hidden="true">{{ me.name[:1] | upper }}</span>
-    <span class="whoami-name">{{ me.name }}</span>
-    <span class="whoami-role">{{ me.role.name }}</span>
-  </span>
-  <a class="btn btn-sm" href="/absence">Absence</a>
-  {% if can(me, Permission.MANAGE_PEOPLE) %}
-  <a class="btn btn-sm" href="/people">People</a>
-  {% endif %}
-  <a class="btn btn-sm {% if view == 'reference' %}btn-primary{% endif %}" href="/reference">Labels</a>
-  <form method="post" action="/logout" style="display:inline">
-    <button class="btn btn-sm" type="submit">Sign out</button>
+  {# The subtitle names the view. It used to read "all open work" on every
+     page, which was wrong on five of the eight — including the two reports,
+     where most of what is counted is finished. #}
+  {% set subtitles = {
+    'board': 'all open work', 'table': 'all open work', 'focus': 'one column at a time',
+    'attention': 'what needs you', 'flow': 'how long work takes',
+    'clients': 'where the work goes', 'reference': 'clients, kinds and roles',
+    'search': 'search'
+  } %}
+  <h1 class="brand">Work Register <span>· {{ subtitles.get(view, 'all open work') }}</span></h1>
+  {# On every page rather than behind a link. A search someone has to navigate
+     to is one they forget exists, and the whole point is finding something when
+     you cannot remember where it is. #}
+  <form class="search-form" method="get" action="/search" role="search">
+    <input type="search" name="q" value="{{ q or '' }}" autocomplete="off"
+           placeholder="Find work…" aria-label="Search work items" />
   </form>
-  {% endif %}
-  <nav class="toggle" aria-label="View">
+  <span class="spacer"></span>
+  {# Two segmented groups rather than nine separate pills. Adding the search
+     box tipped the bar onto a second row on every page; a segmented control
+     shares one background and drops the gaps, which buys the width back without
+     hiding anything behind a menu. The split is also the real one: the first
+     group is ways of looking at the work, the second is ways of looking at
+     ourselves. #}
+  <nav class="toggle" aria-label="Work views">
     <a href="/?view=board" {% if view == 'board' %}aria-current="page"{% endif %}>Board</a>
     <a href="/?view=table" {% if view == 'table' %}aria-current="page"{% endif %}>Table</a>
     <a href="/?view=focus" {% if view == 'focus' %}aria-current="page"{% endif %}>Focus</a>
   </nav>
-  <a class="btn btn-sm {% if view == 'flow' %}btn-primary{% endif %}" href="/flow">How long</a>
-  <a class="btn btn-sm {% if view == 'clients' %}btn-primary{% endif %}" href="/clients">Where it goes</a>
-  <a class="btn btn-sm {% if view == 'attention' %}btn-primary{% endif %}" href="/attention">Needs me</a>
+  <nav class="toggle" aria-label="Insight views">
+    <a href="/attention" {% if view == 'attention' %}aria-current="page"{% endif %}>Needs me</a>
+    <a href="/flow" {% if view == 'flow' %}aria-current="page"{% endif %}>How long</a>
+    <a href="/clients" {% if view == 'clients' %}aria-current="page"{% endif %}>Where it goes</a>
+  </nav>
   <button class="btn btn-sm theme-btn" type="button" id="theme-toggle"
           aria-label="Switch between light and dark">
     <span class="theme-icon-dark">☾</span><span class="theme-icon-light">☀</span>
   </button>
+  {% if me %}
+  {# A native <details>, like the team filter: no JS needed to open it, keyboard
+     accessible, and it degrades to an always-open list if scripting fails. #}
+  <details class="account-menu">
+    <summary title="{{ me.email }}">
+      <span class="avatar" aria-hidden="true">{{ me.name[:1] | upper }}</span>
+      <span class="whoami-name">{{ me.name }}</span>
+      <span class="chev" aria-hidden="true">▾</span>
+    </summary>
+    <div class="account-panel glass">
+      <p class="account-who">
+        <strong>{{ me.name }}</strong><br />
+        <span>{{ me.role.name }}{% if me.team_id %} · {{ me.team.name }}{% endif %}</span><br />
+        <span>{{ me.email }}</span>
+      </p>
+      <div class="team-rule"></div>
+      <a href="/absence">Absence &amp; calendar</a>
+      <a href="/reference">Clients, kinds &amp; roles</a>
+      {% if can(me, Permission.MANAGE_PEOPLE) %}<a href="/people">People</a>{% endif %}
+      <a href="/change-password">Change password</a>
+      <div class="team-rule"></div>
+      <form method="post" action="/logout">
+        <button class="btn btn-sm" type="submit">Sign out</button>
+      </form>
+    </div>
+  </details>
+  {% endif %}
 </header>
 <script>
   document.getElementById("theme-toggle").addEventListener("click", function () {

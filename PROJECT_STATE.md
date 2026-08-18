@@ -10,14 +10,15 @@
 
 ## CURRENT PHASE
 
-**Phase 4 — Implementation.** Features 1–8 built and running. 218 tests.
+**Phase 4 — Implementation.** Features 1–9 built and running. 246 tests.
 
 ## CURRENT OBJECTIVE
 
-Search, then deployment. **The product itself is complete** — what is left is
-finding things at scale and running it somewhere real.
+Deployment — HTTPS, process supervision, backups and a **tested** restore. It is
+the only thing left, and the first day this holds real client commitments is the
+day losing it starts to cost something.
 
-**Status:** 218 tests passing against real PostgreSQL 16. **All 25 business
+**Status:** 246 tests passing against real PostgreSQL 16. **All 25 business
 requirements built, none partial.** All six business objectives BO-1..BO-6 met.
 Full audit in `docs/14-build-status.md`.
 
@@ -274,6 +275,19 @@ Tracked as OPEN-1..OPEN-6 in `docs/03-brd.md` §11. Summary:
   `MANAGE_LABELS` (team lead and above) covers clients and work types;
   `MANAGE_PEOPLE` (admin) covers roles and teams. A lead should not need an
   administrator to add a client.
+- D-045: **Search is substring matching, not full-text.** Working agreement 10
+  applied to real numbers: a few hundred rows in year one, a few thousand by
+  year five, where an `ILIKE` scan is sub-millisecond. Full-text search would
+  add a maintained `tsvector`, a trigger, and stemming that surprises people
+  mid-hunt. The seam is recorded in `app/work/search.py`: past ~50k rows, or if
+  typos become a complaint, swap in a `pg_trgm` GIN index — nothing outside that
+  module changes.
+- D-046: **Words are ANDed and matched in any order.** "acme invoice" finds
+  "Invoice PDF is wrong — Acme", because that is how people remember work. And
+  adding a word must narrow the list, or nobody gets from forty results to one.
+- D-047: **Every result says why it matched.** BR-020 applied to a list: a hit
+  whose title does not contain the query looks like a bug until you can see it
+  matched on the client.
 - D-013: **Optimistic locking** for concurrent edits to one work item.
   Notably *not* needed for concurrent assignment — nothing is reserved under
   ADR-001, so two assignments simply show as higher load, which is accurate.
@@ -366,8 +380,8 @@ Ordered build plan in `docs/14-build-status.md`:
 7. ~~Reporting by client~~ — **DONE 2026-08-16** (BR-019, RULE-018/019)
 8. ~~Reference data management~~ — **DONE 2026-08-16**
    (BR-023, BR-024, RULE-020/021, migration 007)
-9. **Search** ← next
-10. Deployment, backups, restore
+9. ~~Search~~ — **DONE 2026-08-17**
+10. **Deployment, backups, restore** ← next
 
 Items 1–5 are what a pilot needs. 6–7 are what make it worth keeping.
 

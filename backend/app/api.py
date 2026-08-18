@@ -86,6 +86,7 @@ from app.models import (
     WorkItemType,
 )
 from app.work.lifecycle import LABELS, OPEN_STATES, IllegalTransition, State
+from app.work.search import search as search_work
 from app.work.timing import TimingError, parse_when, was_backdated
 from app.work.service import (
     EDITABLE,
@@ -1762,3 +1763,34 @@ def do_set_team_active(
     except ReferenceError as exc:
         return _reference_back(error=str(exc))
     return _reference_back()
+
+
+@app.get("/search", response_class=HTMLResponse)
+def page_search(
+    request: Request,
+    q: str = "",
+    me: Person = Depends(signed_in),
+    session: Session = Depends(get_session),
+):
+    """Find one piece of work among hundreds.
+
+    Scoped by team like every other list (RULE-011) — and the page says so when
+    it finds nothing, because "no results" and "no results you are allowed to
+    see" are different answers and only one of them means the item is missing.
+    """
+    all_team_ids = list(session.scalars(select(Team.id).where(Team.active.is_(True))))
+    permitted = visible_team_ids(me, all_team_ids)
+    sees_everything = set(permitted) == set(all_team_ids)
+
+    return templates.TemplateResponse(
+        request,
+        "search.html",
+        {
+            "me": me,
+            "view": "search",
+            "scoped": not sees_everything,
+            "results": search_work(
+                session, q, team_ids=None if sees_everything else permitted
+            ),
+        },
+    )

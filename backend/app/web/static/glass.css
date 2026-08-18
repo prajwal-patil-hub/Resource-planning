@@ -1785,3 +1785,130 @@ tr:hover .inline-edit .btn,
   height: 17px;
   cursor: pointer;
 }
+
+/* ==========================================================================
+   Search — Feature 9
+   ========================================================================== */
+
+.search-form { flex: 0 1 260px; min-width: 130px; margin-left: 14px; }
+
+.search-form input[type="search"] {
+  width: 100%;
+  font-size: 0.82rem;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: var(--glass-fill-sunk);
+}
+
+.hits { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+
+.hit {
+  display: grid;
+  grid-template-columns: 52px 34px minmax(0, 1fr) auto auto;
+  grid-template-areas: "id pri title meta state" ".  .  why   why  why";
+  align-items: center;
+  gap: 4px 11px;
+  padding: 11px 14px;
+  border-radius: var(--radius-card);
+  text-decoration: none;
+  color: var(--text);
+  transition: transform var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+
+.hit:hover { transform: translateX(2px); background: var(--card-hover-bg); }
+.hit:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* Finished work is context, not something to act on — present but quieter. */
+.hit.closed { opacity: 0.6; }
+
+.hit-id    { grid-area: id;    color: var(--text-3); font-variant-numeric: tabular-nums; font-size: 0.78rem; }
+.hit-title { grid-area: title; font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hit-meta  { grid-area: meta;  display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: 0.78rem; color: var(--text-2); }
+.hit .state-pill { grid-area: state; }
+.hit-why   { grid-area: why;   font-size: 0.71rem; color: var(--text-3); }
+
+@media (max-width: 900px) {
+  .hit {
+    grid-template-columns: 52px 34px minmax(0, 1fr);
+    grid-template-areas: "id pri title" ".  .  meta" ".  .  state" ".  .  why";
+    justify-items: start;
+  }
+}
+
+/* The topbar carries a lot now: identity, search, five admin links and six
+   views. Tightened so it stays on one row at laptop widths — a chrome that
+   wraps makes every page start half an inch lower and looks like a mistake. */
+.topbar .toggle a { padding: 6px 11px; }
+.topbar .btn-sm { padding: 6px 11px; }
+
+/* Account and admin actions, behind the identity chip.
+
+   They were four separate pills in the main bar, costing ~300px of width that
+   the view switchers actually need — and a menu under your own name is where
+   people look for "sign out" and "change password" anyway. */
+.account-menu { position: relative; flex: none; }
+
+.account-menu summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 11px 5px 6px;
+  border-radius: 999px;
+  background: var(--glass-fill-sunk);
+  border: 1px solid var(--glass-border-soft);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  transition: border-color var(--dur) var(--ease);
+}
+
+.account-menu summary::-webkit-details-marker { display: none; }
+.account-menu summary:hover { border-color: var(--glass-border); }
+.account-menu summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.account-menu[open] .chev { transform: rotate(180deg); }
+
+.account-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 60;
+  min-width: 234px;
+  padding: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-radius: var(--radius);
+  animation: rise-in 220ms var(--ease) both;
+  background-color: var(--popover-fill);
+}
+
+.account-who { margin: 4px 8px 8px; font-size: 0.78rem; line-height: 1.5; }
+.account-who span { color: var(--text-3); }
+
+.account-panel a {
+  padding: 8px 9px;
+  border-radius: var(--radius-sm);
+  font-size: 0.84rem;
+  color: var(--text);
+  text-decoration: none;
+  transition: background var(--dur) var(--ease);
+}
+
+.account-panel a:hover { background: var(--row-hover); }
+.account-panel form { margin-top: 4px; }
+.account-panel .btn { width: 100%; text-align: center; }
+
+/* Below a wide laptop the subtitle is the first thing to go: it is orientation,
+   and the view switcher beside it already says which page you are on. */
+@media (max-width: 1400px) {
+  .brand span { display: none; }
+  .search-form { flex-basis: 200px; margin-left: 10px; }
+}
+
+/* Same stacking rule as the team dropdown, one level up. `.glass` isolates, so
+   the account panel's z-index cannot escape the topbar — the topbar itself has
+   to sit above the panels below it, or the menu paints underneath the first
+   section on the page. */
+.topbar { position: relative; z-index: 50; }
+.shell > .panel, .shell > .detail, .shell > .hits { position: relative; z-index: 1; }
